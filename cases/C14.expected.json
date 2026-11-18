@@ -3,9 +3,10 @@
   "tier_a_expected": [],
   "tier_b_expected": [
     {
-      "type": "ambiguity",
+      "type": "spatial_inconsistency",
       "about_refs": [
-        "notes.N2"
+        "notes.N1",
+        "evidence.E1"
       ]
     }
   ]

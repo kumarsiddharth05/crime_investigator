@@ -1,0 +1,85 @@
+{
+  "case": {
+    "id": "C-2026-011",
+    "type": "assault",
+    "title": "Kitchen entry incident — Belagavi",
+    "incident_window": {
+      "start": "2026-01-15T20:00",
+      "end": "2026-01-15T21:00"
+    },
+    "rooms_covered": [
+      "kitchen"
+    ]
+  },
+  "evidence": [
+    {
+      "ref": "evidence.E1",
+      "label": "kitchen knife",
+      "photo_ref": "photos.P1",
+      "det_ref": "photos.P1.d1",
+      "map_ref": "map.E1"
+    }
+  ],
+  "photos": [
+    {
+      "ref": "photos.P1",
+      "room": "kitchen",
+      "view": "wide view of kitchen entry and main door",
+      "detections": [
+        {
+          "ref": "photos.P1.d1",
+          "class": "knife",
+          "conf": 0.92,
+          "disposition": "confirmed",
+          "reason": null
+        }
+      ]
+    }
+  ],
+  "map": {
+    "room": "kitchen",
+    "dimensions_m": {
+      "w": 4.0,
+      "h": 3.0
+    },
+    "reference_points": [
+      {
+        "ref": "map.door",
+        "label": "main door",
+        "xy": [0.0, 0.0]
+      }
+    ],
+    "evidence_positions_summary": [
+      "Evidence E1 (kitchen knife) is approximately 1.2 m from the main door."
+    ],
+    "xy_optional": [
+      {
+        "ref": "map.E1",
+        "xy": [1.2, 0.0]
+      }
+    ]
+  },
+  "timeline": [
+    {
+      "ref": "timeline.T1",
+      "time": "2026-01-15T20:30",
+      "description": "Officer secures the scene",
+      "source": "police_report"
+    }
+  ],
+  "notes": [
+    {
+      "ref": "notes.N1",
+      "type": "observation",
+      "text": "The knife was found near the main door."
+    }
+  ],
+  "derived_facts": {
+    "unreviewed_detection_count": 0,
+    "dismissed_without_reason_count": 0,
+    "notes_without_timeline_match": 0,
+    "photo_coverage": [
+      "kitchen: 1 entry perspective"
+    ]
+  }
+}

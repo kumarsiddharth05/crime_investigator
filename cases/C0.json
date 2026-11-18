@@ -46,6 +46,13 @@
           "conf": 0.85,
           "disposition": "unreviewed",
           "reason": null
+        },
+        {
+          "ref": "photos.P1.d4",
+          "class": "cell_phone",
+          "conf": 0.77,
+          "disposition": "dismissed",
+          "reason": "Device D1 — pink smartphone with a cracked screen — confirmed as the victim's own device, accounted for."
         }
       ]
     }
@@ -106,7 +113,7 @@
     {
       "ref": "notes.N3",
       "type": "remark",
-      "text": "Victim reported her cell phone missing."
+      "text": "Device D1 — pink smartphone with a cracked screen — was reported by the victim as missing. It does not belong to anyone at the residence."
     }
   ],
   "derived_facts": {

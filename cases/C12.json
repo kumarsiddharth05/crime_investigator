@@ -1,0 +1,51 @@
+{
+  "case": {
+    "id": "C-2026-012",
+    "type": "disturbance",
+    "title": "Evening disturbance — Vidyanagar, Hubballi",
+    "incident_window": {
+      "start": "2026-01-15T20:30",
+      "end": "2026-01-15T22:00"
+    },
+    "rooms_covered": [
+      "hallway"
+    ]
+  },
+  "evidence": [],
+  "photos": [
+    {
+      "ref": "photos.P1",
+      "room": "hallway",
+      "view": "corridor view outside apartment",
+      "detections": []
+    }
+  ],
+  "map": {
+    "room": "hallway",
+    "reference_points": [],
+    "evidence_positions_summary": []
+  },
+  "timeline": [
+    {
+      "ref": "timeline.T1",
+      "time": "2026-01-15T21:05",
+      "description": "Witness reported hearing the sound around 21:00; the timeline records the estimated event time as approximately 21:05",
+      "source": "witness"
+    }
+  ],
+  "notes": [
+    {
+      "ref": "notes.N1",
+      "type": "statement",
+      "text": "Witness reports hearing a breaking sound around 21:00."
+    }
+  ],
+  "derived_facts": {
+    "unreviewed_detection_count": 0,
+    "dismissed_without_reason_count": 0,
+    "notes_without_timeline_match": 0,
+    "photo_coverage": [
+      "hallway: 1 corridor perspective"
+    ]
+  }
+}

@@ -1,9 +1,11 @@
 # PROJECT_BRIEF — Crime Scene LLM Analysis Harness
 
 ## 1. Purpose
-A CLI + evaluation harness that proves an LLM can generate grounded,
-citation-backed suggestions on structured crime-scene case data, with
-zero hallucinations reaching the investigator.
+A CLI + evaluation harness that proves an LLM can generate
+grounded, citation-backed suggestions on structured crime-scene
+case data, with zero fabricated references reaching the
+investigator. Reference grounding is verified by code; semantic
+support of each claim is verified by the investigator.
 
 ## 2. Core architecture — three engines, run in order
 - **Tier A (deterministic, no LLM):** Pure Python rules that extract
@@ -55,14 +57,40 @@ Top-level keys: `case`, `evidence`, `photos`, `map`, `timeline`,
 
 Tier A flags are FACTS, not suggestions. Zero hallucination risk.
 
-## 6. Tier B LLM analysis types (6)
-- `spatial_inconsistency` — note says "near X" but map places it >2m away
-- `timeline_contradiction` — two timeline entries or a note-vs-timeline time conflict
-- `contextual_contradiction` — note directly contradicts a dismissal reason
-- `semantic_coverage_gap` — note describes an object/location with no
-  photo coverage (semantic, not structural — Tier A handles A7's room case)
-- `ambiguity` — note has a dangling reference ("she", "it") with no antecedent
-- `follow_up` — a documentation step is missing that is consistent with case type
+## 6. Tier B LLM analysis types (3)
+
+All three types detect CATEGORICAL contradictions — two records
+that make mutually incompatible factual claims about the same
+identified thing. Approximate differences, missing entries, and
+subjective boundaries are explicitly out of scope.
+
+- `spatial_inconsistency` — The same evidence is explicitly
+  placed in mutually exclusive locations across a note and the
+  2D map summary. Example: note says "near the main door",
+  map summary places it "near the window, at the far end of
+  the room from the main door." Not fired on approximate
+  distance differences (e.g., "near door" vs "1.2 m from
+  door").
+
+- `timeline_contradiction` — Two records explicitly describe
+  the SAME identified event (same actor and action) and assign
+  incompatible times. Example: Note says "police arrived at
+  21:40"; timeline records "police arrival at 22:10." A missing
+  timeline entry or a small approximate-time difference is not
+  a contradiction.
+
+- `contextual_contradiction` — Two records make incompatible
+  factual claims about the SAME identified entity (person,
+  object, or event). The identity must be established in both
+  records by shared identifying language (e.g., both records
+  use the label "Device D1 — pink smartphone with a cracked
+  screen"). Example: Note says Device D1 was reported missing;
+  dismissal reason says Device D1 was confirmed as the victim's
+  own device and accounted for.
+
+Approximate-time and approximate-distance differences do not
+constitute contradictions on their own. When in doubt, the
+system remains silent.
 
 ## 7. LLM output schema
 Strict JSON (no markdown fences, no prose). Top level:
@@ -70,7 +98,7 @@ Strict JSON (no markdown fences, no prose). Top level:
 Each suggestion:
 ```json
 {
-  "type": "<one of the 6 types above>",
+  "type": "<one of the 3 types above>",
   "severity": "low" | "medium" | "high",
   "summary": "<string, ≤ 25 words>",
   "evidence_refs": ["<dotted ref>", ...], // minItems: 1
@@ -81,21 +109,42 @@ Each suggestion:
 
 Empty `suggestions: []` is valid and PREFERRED when nothing is wrong.
 
-## 8. Validator checks (6, all mandatory, run in this order)
+## 8. Validator checks (7, all mandatory, run in this order)
+The validator establishes that references and extracted
+entities exist in the input case_context. It cannot
+mathematically guarantee that the LLM has interpreted the
+relationship between cited fields correctly. Semantic
+verification of each suggestion's claim remains the
+investigator's responsibility.
+
 1. **Schema validation** — fails → drop whole response.
-2. **Ref resolution** — every evidence_refs must resolve to a real
-   node in case_context; any unresolved ref → drop the suggestion.
-3. **Dismissal guard** — if suggestion cites a `dismissed` detection
-   with non-null reason, drop unless type is `contextual_contradiction`
-   AND a note/timeline ref is also cited.
-4. **Entity hallucination detector** — extract proper nouns and all
-   numbers from summary+reasoning+suggested_action; any token not
-   present in case_context and not a generic word → flag; ≥2 unverified
-   tokens → drop; exactly 1 → keep with `validation_warning`.
-5. **Dedup vs Tier A** — if semantically identical to a Tier A flag,
-   drop the LLM one (Tier A wins).
-6. **Severity sanity** — "high" severity requires ≥2 refs OR a direct
-   contradiction; else downgrade to "medium".
+2. **Per-invocation type check** — every suggestion's `type`
+   field MUST equal the `assigned_analysis_type` passed to the
+   validator for this invocation. Mismatches are dropped with
+   `rejection_reason="type_mismatch"`. An empty `suggestions: []`
+   list is valid for any valid `assigned_analysis_type`.
+   An invalid `assigned_analysis_type` must raise a controlled
+   `ValueError` regardless of suggestion content.
+3. **Ref resolution** — every `evidence_refs` entry must
+   resolve to a real node in `case_context`; any unresolved ref
+   → drop the suggestion.
+4. **Dismissal guard** — if a suggestion cites a `dismissed`
+   detection with non-null reason, drop unless type is
+   `contextual_contradiction` AND at least one other cited ref
+   resolves to a note/timeline entry (enforced as a mechanical
+   prerequisite; semantic challenge of the dismissal rationale
+   must be verified by the investigator).
+5. **Entity hallucination detector** — extract proper nouns and
+   all numbers from summary+reasoning+suggested_action; any
+   token not present in `case_context` and not in the curated
+   generic vocabulary → flag; ≥2 unverified tokens → drop;
+   exactly 1 → keep with `validation_warning`. Reference
+   resolution does NOT authorize unrelated entity names — the
+   two checks are independent.
+6. **Dedup vs Tier A** — if semantically identical to a Tier A
+   flag, drop the LLM suggestion (Tier A wins).
+7. **Severity sanity** — "high" severity requires at least two
+   distinct evidence references; otherwise downgrade to "medium".
 
 ## 9. LLM client requirements
 - Provider-agnostic. Select via env: LLM_PROVIDER (openai|gemini|anthropic),
@@ -119,12 +168,22 @@ Empty `suggestions: []` is valid and PREFERRED when nothing is wrong.
 ```
 
 ## 11. Acceptance targets (verified by evaluate.py)
-- Tier A recall = 1.0
-- Tier B recall ≥ 0.85
-- Tier B precision ≥ 0.85
-- Hallucination rate = 0.0 (validator-dropped / total suggestions)
-- False positives on clean cases = 0
-- Median latency < 6 s per case
+
+Measured on the defined fixture suite. These are evaluation
+objectives, not guarantees of production behavior.
+
+- Tier A recall = 1.00 on the defined fixtures
+- Tier A precision ≥ 0.95 on the defined fixtures
+- Tier B recall ≥ 0.70 on the defined fixtures
+- Tier B precision ≥ 0.95 on the defined fixtures
+- Fabricated-reference rate = 0.00 on the defined fixtures
+  (validator-dropped / total suggestions)
+- Zero false positives on clean and borderline fixtures
+- Median latency < 6 s under documented test conditions
+
+A clean pass on the fixture suite demonstrates measured
+reliability on those fixtures. It does not prove the system
+will never produce a false positive in production.
 
 ## 12. Directory layout
 ```
@@ -135,35 +194,41 @@ repo/
   schemas/
     case_context.schema.json
   cases/
-    C0.json   C0.expected.json
+    C0.json  C0.expected.json
+    C1.json  C1.expected.json
+    ... (13 fixtures, C0–C7, C10–C14)
   src/
     analysis/
       __init__.py
       tier_a.py
+      refs.py
       validator.py
       pipeline.py
     llm/
       __init__.py
       client.py
       prompt_builder.py
-  prompts/
-    v1/
-      system.md
-      spatial_inconsistency.md
-      timeline_contradiction.md
-      contextual_contradiction.md
-      semantic_coverage_gap.md
-      ambiguity.md
-      follow_up.md
+      prompts/
+        v1/
+          system.md
+          spatial_inconsistency.md
+          timeline_contradiction.md
+          contextual_contradiction.md
   scripts/
     check_fixtures.py
+    check_refs.py
   runs/       # audit JSON per analysis run (created at runtime)
   reports/    # eval reports (created at runtime)
   tests/
+    __init__.py
+    test_refs.py
     test_tier_a.py
     test_validator.py
   analyze.py   # CLI entry
   evaluate.py  # metrics entry
+
+Future (not yet present):
+  .github/workflows/ci.yml
 ```
 
 ## 13. Non-goals for this harness

@@ -9,6 +9,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from src.analysis.refs import resolve_ref
+
 # Rule A3 allowlist of known object classes
 A3_OBJECT_ALLOWLIST = [
     "knife",
@@ -48,52 +50,6 @@ A7_ROOM_ALLOWLIST = [
 # In timeline entries, times may be preceded by 'T' (ISO-8601: 2026-01-15T21:45) or word boundary
 TIMELINE_TIME_REGEX = re.compile(r"(?:\b|T)((?:[01]?\d|2[0-3]):[0-5]\d)\b")
 NOTE_TIME_REGEX = re.compile(r"\b((?:[01]?\d|2[0-3]):[0-5]\d)\b")
-
-
-def _resolve_ref(ref: str, case_context: dict[str, Any]) -> Any:
-    """Resolve a dotted ref against case_context to ensure it points to a real node."""
-    if ref == "case":
-        return case_context.get("case")
-
-    parts = ref.split(".")
-    current: Any = case_context
-    prefix_parts: list[str] = []
-
-    for p in parts:
-        prefix_parts.append(p)
-        current_prefix = ".".join(prefix_parts)
-
-        if isinstance(current, dict):
-            if p in current:
-                current = current[p]
-            else:
-                found: Any = None
-                for val in current.values():
-                    if isinstance(val, list):
-                        for item in val:
-                            if isinstance(item, dict) and item.get("ref") == current_prefix:
-                                found = item
-                                break
-                        if found is not None:
-                            break
-                if found is not None:
-                    current = found
-                else:
-                    return None
-        elif isinstance(current, list):
-            found = None
-            for item in current:
-                if isinstance(item, dict) and item.get("ref") == current_prefix:
-                    found = item
-                    break
-            if found is not None:
-                current = found
-            else:
-                return None
-        else:
-            return None
-
-    return current
 
 
 def _normalize_time(time_str: str) -> str:
@@ -343,7 +299,7 @@ def run_tier_a(case_context: dict[str, Any]) -> list[dict[str, Any]]:
     # Internal sanity check: verify every produced ref resolves against case_context
     for flag in flags:
         for ref in flag.get("evidence_refs", []):
-            resolved = _resolve_ref(ref, case_context)
+            resolved = resolve_ref(case_context, ref)
             if resolved is None:
                 raise AssertionError(
                     f"Tier A generated unresolvable ref '{ref}' for rule {flag.get('rule')}"
