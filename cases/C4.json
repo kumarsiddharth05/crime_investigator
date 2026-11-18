@@ -8,7 +8,8 @@
       "end": "2026-01-20T21:15"
     },
     "rooms_covered": [
-      "living_room"
+      "living_room",
+      "kitchen"
     ]
   },
   "evidence": [
@@ -43,9 +44,9 @@
         {
           "ref": "photos.P1.d3",
           "class": "cell_phone",
-          "conf": 0.88,
+          "conf": 0.83,
           "disposition": "dismissed",
-          "reason": "victim's own phone, accounted for"
+          "reason": "Device D1 — pink smartphone with a cracked screen — confirmed as the victim's own device, accounted for."
         }
       ]
     }
@@ -110,8 +111,8 @@
     },
     {
       "ref": "notes.N4",
-      "type": "remark",
-      "text": "Victim reported her cell phone missing from her bag."
+      "type": "statement",
+      "text": "Device D1 — pink smartphone with a cracked screen — was observed on the kitchen counter. It does not belong to the victim. The victim's own phone (a white iPhone) remains missing from her bag."
     }
   ],
   "derived_facts": {

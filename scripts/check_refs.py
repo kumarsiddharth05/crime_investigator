@@ -5,55 +5,12 @@ import json
 import sys
 from pathlib import Path
 
+# Add repo root to sys.path so src.analysis.refs can be imported
+REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
-def resolve_ref(ref: str, case_context: dict):
-    # Special case: if ref == "case" -> resolves to case_context["case"] (top-level key)
-    if ref == "case":
-        return case_context.get("case")
-
-    parts = ref.split(".")
-    current = case_context
-    prefix_parts = []
-
-    for p in parts:
-        prefix_parts.append(p)
-        current_prefix = ".".join(prefix_parts)
-
-        if isinstance(current, dict):
-            if p in current:
-                current = current[p]
-            else:
-                # Descend into nested lists of dicts (e.g. photos[].detections[])
-                found = None
-                for val in current.values():
-                    if isinstance(val, list):
-                        for item in val:
-                            if isinstance(item, dict) and item.get("ref") == current_prefix:
-                                found = item
-                                break
-                        if found is not None:
-                            break
-                if found is not None:
-                    current = found
-                else:
-                    current = None
-                    break
-        elif isinstance(current, list):
-            found = None
-            for item in current:
-                if isinstance(item, dict) and item.get("ref") == current_prefix:
-                    found = item
-                    break
-            if found is not None:
-                current = found
-            else:
-                current = None
-                break
-        else:
-            current = None
-            break
-
-    return current
+from src.analysis.refs import resolve_ref
 
 
 def main() -> int:
@@ -107,7 +64,7 @@ def main() -> int:
 
         for ref in refs:
             total_refs += 1
-            resolved = resolve_ref(ref, case_context)
+            resolved = resolve_ref(case_context, ref)
             if resolved is not None:
                 print(f"  [PASS] '{ref}' resolved in {case_file.name}")
             else:

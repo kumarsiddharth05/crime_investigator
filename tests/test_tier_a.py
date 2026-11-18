@@ -53,8 +53,8 @@ def test_tier_a_against_expected(case_path: Path) -> None:
 
 
 def test_clean_cases_return_empty() -> None:
-    """Explicitly verify that clean cases (C6, C7, C10) produce zero Tier A flags."""
-    for case_id in ["C6", "C7", "C10"]:
+    """Explicitly verify that clean cases produce zero Tier A flags."""
+    for case_id in ["C5", "C6", "C7", "C10", "C11", "C12", "C13"]:
         case_path = CASES_DIR / f"{case_id}.json"
         assert case_path.exists(), f"Missing {case_path.name}"
         with open(case_path, "r", encoding="utf-8") as f:

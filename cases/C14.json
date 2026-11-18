@@ -1,0 +1,91 @@
+{
+  "case": {
+    "id": "C-2026-014",
+    "type": "burglary",
+    "title": "Study break-in — Camp, Belagavi",
+    "incident_window": {
+      "start": "2026-01-15T10:00",
+      "end": "2026-01-15T12:00"
+    },
+    "rooms_covered": [
+      "study",
+      "study_room"
+    ]
+  },
+  "evidence": [
+    {
+      "ref": "evidence.E1",
+      "label": "laptop",
+      "photo_ref": "photos.P1",
+      "det_ref": "photos.P1.d1",
+      "map_ref": "map.E1"
+    }
+  ],
+  "photos": [
+    {
+      "ref": "photos.P1",
+      "room": "study_room",
+      "view": "wide view of study room and desk area",
+      "detections": [
+        {
+          "ref": "photos.P1.d1",
+          "class": "laptop",
+          "conf": 0.88,
+          "disposition": "confirmed",
+          "reason": null
+        }
+      ]
+    }
+  ],
+  "map": {
+    "room": "study_room",
+    "dimensions_m": {
+      "w": 5.0,
+      "h": 4.0
+    },
+    "reference_points": [
+      {
+        "ref": "map.desk",
+        "label": "study desk",
+        "xy": [1.0, 2.0]
+      },
+      {
+        "ref": "map.door",
+        "label": "balcony door",
+        "xy": [4.5, 0.5]
+      }
+    ],
+    "evidence_positions_summary": [
+      "Evidence E1 (laptop) is near the balcony door, on the opposite side of the study from the desk."
+    ],
+    "xy_optional": [
+      {
+        "ref": "map.E1",
+        "xy": [4.2, 0.6]
+      }
+    ]
+  },
+  "timeline": [
+    {
+      "ref": "timeline.T1",
+      "time": "2026-01-15T11:00",
+      "description": "Resident discovers open balcony door",
+      "source": "resident"
+    }
+  ],
+  "notes": [
+    {
+      "ref": "notes.N1",
+      "type": "observation",
+      "text": "The laptop was on the study desk, next to the printer."
+    }
+  ],
+  "derived_facts": {
+    "unreviewed_detection_count": 0,
+    "dismissed_without_reason_count": 0,
+    "notes_without_timeline_match": 0,
+    "photo_coverage": [
+      "study_room: 1 desk and balcony perspective"
+    ]
+  }
+}
