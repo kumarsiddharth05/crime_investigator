@@ -1,0 +1,10 @@
+{
+  "clean": false,
+  "tier_a_expected": [
+    {
+      "rule": "A1",
+      "about_ref": "photos.P1.d2"
+    }
+  ],
+  "tier_b_expected": []
+}

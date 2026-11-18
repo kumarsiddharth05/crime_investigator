@@ -1,0 +1,18 @@
+{
+  "clean": false,
+  "tier_a_expected": [
+    {
+      "rule": "A4",
+      "about_ref": "notes.N1"
+    }
+  ],
+  "tier_b_expected": [
+    {
+      "type": "timeline_contradiction",
+      "about_refs": [
+        "notes.N1",
+        "timeline.T1"
+      ]
+    }
+  ]
+}

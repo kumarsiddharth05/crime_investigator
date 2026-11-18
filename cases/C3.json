@@ -1,0 +1,96 @@
+{
+  "case": {
+    "id": "C-2026-003",
+    "type": "disturbance",
+    "title": "Night disturbance — Vidyanagar, Hubballi",
+    "incident_window": {
+      "start": "2026-04-12T21:30",
+      "end": "2026-04-12T22:30"
+    },
+    "rooms_covered": [
+      "hallway"
+    ]
+  },
+  "evidence": [
+    {
+      "ref": "evidence.E1",
+      "label": "iron crowbar",
+      "photo_ref": "photos.P1",
+      "det_ref": "photos.P1.d1",
+      "map_ref": "map.E1"
+    }
+  ],
+  "photos": [
+    {
+      "ref": "photos.P1",
+      "room": "hallway",
+      "view": "hallway perspective showing entryway and corridor",
+      "detections": [
+        {
+          "ref": "photos.P1.d1",
+          "class": "crowbar",
+          "conf": 0.89,
+          "disposition": "confirmed",
+          "reason": null
+        }
+      ]
+    }
+  ],
+  "map": {
+    "room": "hallway",
+    "dimensions_m": {
+      "w": 3.0,
+      "h": 6.0
+    },
+    "reference_points": [
+      {
+        "ref": "map.door",
+        "label": "front entrance",
+        "xy": [0.0, 0.0]
+      }
+    ],
+    "evidence_positions_summary": [
+      "Evidence E1 (iron crowbar) is located ~1.5 m from the front entrance on the hallway floor."
+    ],
+    "xy_optional": [
+      {
+        "ref": "map.E1",
+        "xy": [0.5, 1.5]
+      }
+    ]
+  },
+  "timeline": [
+    {
+      "ref": "timeline.T1",
+      "time": "2026-04-12T21:45",
+      "description": "Neighbor places emergency call to control room",
+      "source": "call_record"
+    },
+    {
+      "ref": "timeline.T2",
+      "time": "2026-04-12T22:10",
+      "description": "Patrol unit reaches scene",
+      "source": "patrol_log"
+    }
+  ],
+  "notes": [
+    {
+      "ref": "notes.N1",
+      "type": "witness_statement",
+      "text": "Second-floor tenant reported hearing a loud scream at 21:40 before running downstairs."
+    },
+    {
+      "ref": "notes.N2",
+      "type": "observation",
+      "text": "Iron crowbar recovered from the corridor floor."
+    }
+  ],
+  "derived_facts": {
+    "unreviewed_detection_count": 0,
+    "dismissed_without_reason_count": 0,
+    "notes_without_timeline_match": 1,
+    "photo_coverage": [
+      "hallway: 1 corridor perspective"
+    ]
+  }
+}

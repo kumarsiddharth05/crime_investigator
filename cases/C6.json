@@ -1,0 +1,108 @@
+{
+  "case": {
+    "id": "C-2026-006",
+    "type": "burglary",
+    "title": "Study break-in — Tilakwadi, Belagavi",
+    "incident_window": {
+      "start": "2026-06-18T09:00",
+      "end": "2026-06-18T18:30"
+    },
+    "rooms_covered": [
+      "study_room"
+    ]
+  },
+  "evidence": [
+    {
+      "ref": "evidence.E1",
+      "label": "laptop with damaged casing",
+      "photo_ref": "photos.P1",
+      "det_ref": "photos.P1.d1",
+      "map_ref": "map.E1"
+    }
+  ],
+  "photos": [
+    {
+      "ref": "photos.P1",
+      "room": "study_room",
+      "view": "full view of study desk and bookshelf",
+      "detections": [
+        {
+          "ref": "photos.P1.d1",
+          "class": "laptop",
+          "conf": 0.96,
+          "disposition": "confirmed",
+          "reason": null
+        },
+        {
+          "ref": "photos.P1.d2",
+          "class": "pen",
+          "conf": 0.81,
+          "disposition": "dismissed",
+          "reason": "standard ballpoint pen on desk, not evidentiary"
+        }
+      ]
+    }
+  ],
+  "map": {
+    "room": "study_room",
+    "dimensions_m": {
+      "w": 4.0,
+      "h": 3.5
+    },
+    "reference_points": [
+      {
+        "ref": "map.door",
+        "label": "study door",
+        "xy": [0.0, 0.0]
+      },
+      {
+        "ref": "map.desk",
+        "label": "study desk",
+        "xy": [2.5, 1.5]
+      }
+    ],
+    "evidence_positions_summary": [
+      "Evidence E1 (laptop with damaged casing) is at approx (2.5, 1.5) m — placed on top of the study desk."
+    ],
+    "xy_optional": [
+      {
+        "ref": "map.E1",
+        "xy": [2.5, 1.5]
+      }
+    ]
+  },
+  "timeline": [
+    {
+      "ref": "timeline.T1",
+      "time": "2026-06-18T09:00",
+      "description": "Resident leaves for office",
+      "source": "resident"
+    },
+    {
+      "ref": "timeline.T2",
+      "time": "2026-06-18T18:30",
+      "description": "Resident returns to study and notices disturbance",
+      "source": "resident"
+    }
+  ],
+  "notes": [
+    {
+      "ref": "notes.N1",
+      "type": "observation",
+      "text": "Laptop on the study desk was damaged during the search."
+    },
+    {
+      "ref": "notes.N2",
+      "type": "statement",
+      "text": "Resident was away between 09:00 and 18:30."
+    }
+  ],
+  "derived_facts": {
+    "unreviewed_detection_count": 0,
+    "dismissed_without_reason_count": 0,
+    "notes_without_timeline_match": 0,
+    "photo_coverage": [
+      "study_room: 1 full desk view"
+    ]
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "clean": false,
+  "tier_a_expected": [],
+  "tier_b_expected": [
+    {
+      "type": "contextual_contradiction",
+      "about_refs": [
+        "notes.N4",
+        "photos.P1.d3"
+      ]
+    }
+  ]
+}

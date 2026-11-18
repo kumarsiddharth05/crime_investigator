@@ -1,0 +1,120 @@
+{
+  "case": {
+    "id": "C-2026-001",
+    "type": "burglary",
+    "title": "Residential burglary — Davangere",
+    "incident_window": {
+      "start": "2026-01-15T21:30",
+      "end": "2026-01-15T22:30"
+    },
+    "rooms_covered": [
+      "living_room"
+    ]
+  },
+  "evidence": [
+    {
+      "ref": "evidence.E1",
+      "label": "bloody kitchen knife",
+      "photo_ref": "photos.P1",
+      "det_ref": "photos.P1.d1",
+      "map_ref": "map.E1"
+    }
+  ],
+  "photos": [
+    {
+      "ref": "photos.P1",
+      "room": "living_room",
+      "view": "wide shot facing sofa and main entrance door",
+      "detections": [
+        {
+          "ref": "photos.P1.d1",
+          "class": "knife",
+          "conf": 0.92,
+          "disposition": "confirmed",
+          "reason": null
+        },
+        {
+          "ref": "photos.P1.d2",
+          "class": "bottle",
+          "conf": 0.78,
+          "disposition": "dismissed",
+          "reason": "water bottle, belonging to homeowner, not evidence"
+        },
+        {
+          "ref": "photos.P1.d3",
+          "class": "cell_phone",
+          "conf": 0.85,
+          "disposition": "unreviewed",
+          "reason": null
+        }
+      ]
+    }
+  ],
+  "map": {
+    "room": "living_room",
+    "dimensions_m": {
+      "w": 5.0,
+      "h": 4.0
+    },
+    "reference_points": [
+      {
+        "ref": "map.door",
+        "label": "main entrance door",
+        "xy": [0.0, 0.0]
+      },
+      {
+        "ref": "map.window",
+        "label": "living room window",
+        "xy": [5.0, 1.5]
+      }
+    ],
+    "evidence_positions_summary": [
+      "Evidence E1 (bloody kitchen knife) is positioned at approx (3.8, 2.9) m — about 2.9 m from the main entrance door and ~2.3 m from the living room window, near the south wall."
+    ],
+    "xy_optional": [
+      {
+        "ref": "map.E1",
+        "xy": [3.8, 2.9]
+      }
+    ]
+  },
+  "timeline": [
+    {
+      "ref": "timeline.T1",
+      "time": "2026-01-15T21:45",
+      "description": "Neighbor reports disturbance and shouting",
+      "source": "witness"
+    },
+    {
+      "ref": "timeline.T2",
+      "time": "2026-01-15T22:10",
+      "description": "First responding patrol officer arrives on scene",
+      "source": null
+    }
+  ],
+  "notes": [
+    {
+      "ref": "notes.N1",
+      "type": "observation",
+      "text": "Blood spatter pattern observed near the central sofa area."
+    },
+    {
+      "ref": "notes.N2",
+      "type": "witness_statement",
+      "text": "Neighbor heard commotion and glass breaking around 21:45."
+    },
+    {
+      "ref": "notes.N3",
+      "type": "remark",
+      "text": "Victim reported her cell phone missing."
+    }
+  ],
+  "derived_facts": {
+    "unreviewed_detection_count": 1,
+    "dismissed_without_reason_count": 0,
+    "notes_without_timeline_match": 0,
+    "photo_coverage": [
+      "living_room: 1 wide shot"
+    ]
+  }
+}

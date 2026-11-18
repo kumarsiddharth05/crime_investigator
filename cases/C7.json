@@ -1,0 +1,108 @@
+{
+  "case": {
+    "id": "C-2026-007",
+    "type": "commercial_burglary",
+    "title": "Shop theft — Gandhi Bazaar, Shivamogga",
+    "incident_window": {
+      "start": "2026-07-05T22:00",
+      "end": "2026-07-06T08:00"
+    },
+    "rooms_covered": [
+      "office"
+    ]
+  },
+  "evidence": [
+    {
+      "ref": "evidence.E1",
+      "label": "metal cash box with pried lock",
+      "photo_ref": "photos.P1",
+      "det_ref": "photos.P1.d1",
+      "map_ref": "map.E1"
+    }
+  ],
+  "photos": [
+    {
+      "ref": "photos.P1",
+      "room": "office",
+      "view": "overview of administrative desk and filing cabinet",
+      "detections": [
+        {
+          "ref": "photos.P1.d1",
+          "class": "cash_box",
+          "conf": 0.94,
+          "disposition": "confirmed",
+          "reason": null
+        },
+        {
+          "ref": "photos.P1.d2",
+          "class": "bottle",
+          "conf": 0.80,
+          "disposition": "dismissed",
+          "reason": "water bottle, clearly not evidentiary"
+        }
+      ]
+    }
+  ],
+  "map": {
+    "room": "office",
+    "dimensions_m": {
+      "w": 4.5,
+      "h": 3.8
+    },
+    "reference_points": [
+      {
+        "ref": "map.door",
+        "label": "office door",
+        "xy": [0.0, 0.0]
+      },
+      {
+        "ref": "map.cabinet",
+        "label": "filing cabinet",
+        "xy": [2.0, 3.0]
+      }
+    ],
+    "evidence_positions_summary": [
+      "Evidence E1 (metal cash box with pried lock) is located on the filing cabinet at approx (2.0, 3.0) m."
+    ],
+    "xy_optional": [
+      {
+        "ref": "map.E1",
+        "xy": [2.0, 3.0]
+      }
+    ]
+  },
+  "timeline": [
+    {
+      "ref": "timeline.T1",
+      "time": "2026-07-05T22:00",
+      "description": "Store locked and secured by shop manager",
+      "source": "manager"
+    },
+    {
+      "ref": "timeline.T2",
+      "time": "2026-07-06T08:00",
+      "description": "Cashier opens shop and detects forced lock",
+      "source": "cashier"
+    }
+  ],
+  "notes": [
+    {
+      "ref": "notes.N1",
+      "type": "observation",
+      "text": "Metal cash box on filing cabinet was pried open."
+    },
+    {
+      "ref": "notes.N2",
+      "type": "statement",
+      "text": "Store closed at 22:00 and reopened at 08:00."
+    }
+  ],
+  "derived_facts": {
+    "unreviewed_detection_count": 0,
+    "dismissed_without_reason_count": 0,
+    "notes_without_timeline_match": 0,
+    "photo_coverage": [
+      "office: 1 cabinet overview"
+    ]
+  }
+}

@@ -1,0 +1,101 @@
+{
+  "case": {
+    "id": "C-2026-008",
+    "type": "theft",
+    "title": "Reception desk theft — Cantonment, Ballari",
+    "incident_window": {
+      "start": "2026-08-14T11:00",
+      "end": "2026-08-14T11:30"
+    },
+    "rooms_covered": [
+      "reception"
+    ]
+  },
+  "evidence": [
+    {
+      "ref": "evidence.E1",
+      "label": "brown leather wallet",
+      "photo_ref": "photos.P1",
+      "det_ref": "photos.P1.d1",
+      "map_ref": "map.E1"
+    }
+  ],
+  "photos": [
+    {
+      "ref": "photos.P1",
+      "room": "reception",
+      "view": "reception counter and visitor waiting seats",
+      "detections": [
+        {
+          "ref": "photos.P1.d1",
+          "class": "wallet",
+          "conf": 0.90,
+          "disposition": "confirmed",
+          "reason": null
+        }
+      ]
+    }
+  ],
+  "map": {
+    "room": "reception",
+    "dimensions_m": {
+      "w": 4.0,
+      "h": 3.0
+    },
+    "reference_points": [
+      {
+        "ref": "map.door",
+        "label": "entrance glass door",
+        "xy": [0.0, 0.0]
+      },
+      {
+        "ref": "map.counter",
+        "label": "reception counter",
+        "xy": [1.5, 1.2]
+      }
+    ],
+    "evidence_positions_summary": [
+      "Evidence E1 (brown leather wallet) is ~1.2 m from the reception counter, placed beside the registry."
+    ],
+    "xy_optional": [
+      {
+        "ref": "map.E1",
+        "xy": [1.5, 1.2]
+      }
+    ]
+  },
+  "timeline": [
+    {
+      "ref": "timeline.T1",
+      "time": "2026-08-14T11:00",
+      "description": "Visitor logs in at front desk",
+      "source": "visitor_log"
+    },
+    {
+      "ref": "timeline.T2",
+      "time": "2026-08-14T11:30",
+      "description": "Wallet reported taken from desk",
+      "source": "receptionist"
+    }
+  ],
+  "notes": [
+    {
+      "ref": "notes.N1",
+      "type": "observation",
+      "text": "Brown leather wallet was removed from the reception counter."
+    },
+    {
+      "ref": "notes.N2",
+      "type": "remark",
+      "text": "She appeared nervous and kept looking at the door."
+    }
+  ],
+  "derived_facts": {
+    "unreviewed_detection_count": 0,
+    "dismissed_without_reason_count": 0,
+    "notes_without_timeline_match": 0,
+    "photo_coverage": [
+      "reception: 1 counter view"
+    ]
+  }
+}

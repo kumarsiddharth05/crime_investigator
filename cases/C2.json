@@ -1,0 +1,101 @@
+{
+  "case": {
+    "id": "C-2026-002",
+    "type": "assault",
+    "title": "Apartment altercation — Jayalakshmipuram, Mysuru",
+    "incident_window": {
+      "start": "2026-03-04T20:00",
+      "end": "2026-03-04T20:30"
+    },
+    "rooms_covered": [
+      "living_room"
+    ]
+  },
+  "evidence": [
+    {
+      "ref": "evidence.E1",
+      "label": "chef knife with stains",
+      "photo_ref": "photos.P1",
+      "det_ref": "photos.P1.d1",
+      "map_ref": "map.E1"
+    }
+  ],
+  "photos": [
+    {
+      "ref": "photos.P1",
+      "room": "living_room",
+      "view": "wide view of living room floor and entryway",
+      "detections": [
+        {
+          "ref": "photos.P1.d1",
+          "class": "knife",
+          "conf": 0.93,
+          "disposition": "confirmed",
+          "reason": null
+        }
+      ]
+    }
+  ],
+  "map": {
+    "room": "living_room",
+    "dimensions_m": {
+      "w": 5.0,
+      "h": 4.0
+    },
+    "reference_points": [
+      {
+        "ref": "map.door",
+        "label": "main door",
+        "xy": [0.0, 0.0]
+      },
+      {
+        "ref": "map.sofa",
+        "label": "sofa",
+        "xy": [3.0, 2.5]
+      }
+    ],
+    "evidence_positions_summary": [
+      "Evidence E1 (chef knife with stains) is located at approx (3.2, 2.8) m — about 3.2 m from the main door, near the south wall."
+    ],
+    "xy_optional": [
+      {
+        "ref": "map.E1",
+        "xy": [3.2, 2.8]
+      }
+    ]
+  },
+  "timeline": [
+    {
+      "ref": "timeline.T1",
+      "time": "2026-03-04T20:15",
+      "description": "Disturbance reported by security guard",
+      "source": "security_guard"
+    },
+    {
+      "ref": "timeline.T2",
+      "time": "2026-03-04T20:30",
+      "description": "First responders arrive",
+      "source": "officer"
+    }
+  ],
+  "notes": [
+    {
+      "ref": "notes.N1",
+      "type": "observation",
+      "text": "Officer records knife near the main door."
+    },
+    {
+      "ref": "notes.N2",
+      "type": "witness_statement",
+      "text": "Security guard heard commotion around 20:15."
+    }
+  ],
+  "derived_facts": {
+    "unreviewed_detection_count": 0,
+    "dismissed_without_reason_count": 0,
+    "notes_without_timeline_match": 0,
+    "photo_coverage": [
+      "living_room: 1 wide view"
+    ]
+  }
+}

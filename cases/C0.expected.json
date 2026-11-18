@@ -1,0 +1,22 @@
+{
+  "clean": false,
+  "tier_a_expected": [
+    {
+      "rule": "A1",
+      "about_ref": "photos.P1.d3"
+    },
+    {
+      "rule": "A6",
+      "about_ref": "timeline.T2"
+    }
+  ],
+  "tier_b_expected": [
+    {
+      "type": "contextual_contradiction",
+      "about_refs": [
+        "notes.N3",
+        "photos.P1.d3"
+      ]
+    }
+  ]
+}

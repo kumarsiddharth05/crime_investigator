@@ -1,0 +1,174 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CaseContext",
+  "description": "Schema for crime scene case context consumed by Tier A, Tier B LLM, and Validator engines.",
+  "type": "object",
+  "required": [
+    "case",
+    "evidence",
+    "photos",
+    "map",
+    "timeline",
+    "notes",
+    "derived_facts"
+  ],
+  "properties": {
+    "case": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string" },
+        "title": { "type": "string" },
+        "incident_window": {
+          "type": "object",
+          "properties": {
+            "start": { "type": "string" },
+            "end": { "type": "string" }
+          }
+        },
+        "rooms_covered": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["ref", "label"],
+        "properties": {
+          "ref": { "type": "string" },
+          "label": { "type": "string" },
+          "photo_ref": { "type": ["string", "null"] },
+          "det_ref": { "type": ["string", "null"] },
+          "map_ref": { "type": ["string", "null"] }
+        },
+        "additionalProperties": true
+      }
+    },
+    "photos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["ref", "detections"],
+        "properties": {
+          "ref": { "type": "string" },
+          "room": { "type": "string" },
+          "view": { "type": "string" },
+          "detections": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["ref", "class", "conf", "disposition"],
+              "properties": {
+                "ref": { "type": "string" },
+                "class": { "type": "string" },
+                "conf": {
+                  "type": "number",
+                  "minimum": 0.0,
+                  "maximum": 1.0
+                },
+                "disposition": {
+                  "type": "string",
+                  "enum": ["confirmed", "dismissed", "unreviewed"]
+                },
+                "reason": {
+                  "type": ["string", "null"]
+                }
+              },
+              "if": {
+                "properties": {
+                  "disposition": { "const": "dismissed" }
+                },
+                "required": ["disposition"]
+              },
+              "then": {
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": ["reason"]
+              },
+              "additionalProperties": true
+            }
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "map": {
+      "type": "object",
+      "required": ["evidence_positions_summary"],
+      "properties": {
+        "room": { "type": "string" },
+        "dimensions_m": {
+          "type": "object",
+          "properties": {
+            "w": { "type": "number" },
+            "h": { "type": "number" }
+          }
+        },
+        "reference_points": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["ref", "label"],
+            "properties": {
+              "ref": { "type": "string" },
+              "label": { "type": "string" },
+              "xy": {
+                "type": "array",
+                "items": { "type": "number" }
+              }
+            }
+          }
+        },
+        "evidence_positions_summary": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "xy_optional": {
+          "type": ["array", "object"]
+        }
+      },
+      "additionalProperties": true
+    },
+    "timeline": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["ref", "time", "description"],
+        "properties": {
+          "ref": { "type": "string" },
+          "time": { "type": "string" },
+          "description": { "type": "string" },
+          "source": { "type": ["string", "null"] }
+        },
+        "additionalProperties": true
+      }
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["ref", "text"],
+        "properties": {
+          "ref": { "type": "string" },
+          "type": { "type": "string" },
+          "text": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "derived_facts": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

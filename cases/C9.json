@@ -1,0 +1,101 @@
+{
+  "case": {
+    "id": "C-2026-009",
+    "type": "burglary",
+    "title": "House burglary — MSK Mill Area, Kalaburagi",
+    "incident_window": {
+      "start": "2026-09-01T15:00",
+      "end": "2026-09-01T17:30"
+    },
+    "rooms_covered": [
+      "living_room"
+    ]
+  },
+  "evidence": [
+    {
+      "ref": "evidence.E1",
+      "label": "gold wristwatch box",
+      "photo_ref": "photos.P1",
+      "det_ref": "photos.P1.d1",
+      "map_ref": "map.E1"
+    }
+  ],
+  "photos": [
+    {
+      "ref": "photos.P1",
+      "room": "living_room",
+      "view": "living room sideboard and ransacked drawer",
+      "detections": [
+        {
+          "ref": "photos.P1.d1",
+          "class": "watch",
+          "conf": 0.88,
+          "disposition": "confirmed",
+          "reason": null
+        }
+      ]
+    }
+  ],
+  "map": {
+    "room": "living_room",
+    "dimensions_m": {
+      "w": 4.8,
+      "h": 3.6
+    },
+    "reference_points": [
+      {
+        "ref": "map.door",
+        "label": "entry door",
+        "xy": [0.0, 0.0]
+      },
+      {
+        "ref": "map.sideboard",
+        "label": "sideboard",
+        "xy": [2.1, 1.8]
+      }
+    ],
+    "evidence_positions_summary": [
+      "Evidence E1 (gold wristwatch box) is at approx (2.1, 1.8) m on top of the living room sideboard."
+    ],
+    "xy_optional": [
+      {
+        "ref": "map.E1",
+        "xy": [2.1, 1.8]
+      }
+    ]
+  },
+  "timeline": [
+    {
+      "ref": "timeline.T1",
+      "time": "2026-09-01T15:00",
+      "description": "Occupants leave for local market",
+      "source": "resident"
+    },
+    {
+      "ref": "timeline.T2",
+      "time": "2026-09-01T17:30",
+      "description": "Occupants return to find sideboard drawer opened",
+      "source": "resident"
+    }
+  ],
+  "notes": [
+    {
+      "ref": "notes.N1",
+      "type": "observation",
+      "text": "Gold wristwatch box on the living room sideboard was ransacked."
+    },
+    {
+      "ref": "notes.N2",
+      "type": "statement",
+      "text": "House was vacated between 15:00 and 17:30."
+    }
+  ],
+  "derived_facts": {
+    "unreviewed_detection_count": 0,
+    "dismissed_without_reason_count": 0,
+    "notes_without_timeline_match": 0,
+    "photo_coverage": [
+      "living_room: 1 sideboard view"
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "clean": false,
+  "tier_a_expected": [],
+  "tier_b_expected": [
+    {
+      "type": "ambiguity",
+      "about_refs": [
+        "notes.N2"
+      ]
+    }
+  ]
+}

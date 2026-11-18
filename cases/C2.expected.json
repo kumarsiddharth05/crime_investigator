@@ -1,0 +1,13 @@
+{
+  "clean": false,
+  "tier_a_expected": [],
+  "tier_b_expected": [
+    {
+      "type": "spatial_inconsistency",
+      "about_refs": [
+        "notes.N1",
+        "evidence.E1"
+      ]
+    }
+  ]
+}

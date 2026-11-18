@@ -1,0 +1,101 @@
+{
+  "case": {
+    "id": "C-2026-010",
+    "type": "trespassing",
+    "title": "Suspected intrusion — Manipal, Udupi",
+    "incident_window": {
+      "start": "2026-10-10T16:00",
+      "end": "2026-10-10T16:45"
+    },
+    "rooms_covered": [
+      "living_room"
+    ]
+  },
+  "evidence": [
+    {
+      "ref": "evidence.E1",
+      "label": "broken ceramic vase",
+      "photo_ref": "photos.P1",
+      "det_ref": "photos.P1.d1",
+      "map_ref": "map.E1"
+    }
+  ],
+  "photos": [
+    {
+      "ref": "photos.P1",
+      "room": "living_room",
+      "view": "living room window bay showing floor and shattered fragments",
+      "detections": [
+        {
+          "ref": "photos.P1.d1",
+          "class": "vase",
+          "conf": 0.95,
+          "disposition": "confirmed",
+          "reason": null
+        }
+      ]
+    }
+  ],
+  "map": {
+    "room": "living_room",
+    "dimensions_m": {
+      "w": 5.0,
+      "h": 4.0
+    },
+    "reference_points": [
+      {
+        "ref": "map.door",
+        "label": "entrance door",
+        "xy": [0.0, 0.0]
+      },
+      {
+        "ref": "map.window",
+        "label": "living room window",
+        "xy": [4.0, 3.0]
+      }
+    ],
+    "evidence_positions_summary": [
+      "Evidence E1 (broken ceramic vase) is at approx (3.8, 2.9) m — placed on the floor directly near the living room window."
+    ],
+    "xy_optional": [
+      {
+        "ref": "map.E1",
+        "xy": [3.8, 2.9]
+      }
+    ]
+  },
+  "timeline": [
+    {
+      "ref": "timeline.T1",
+      "time": "2026-10-10T16:00",
+      "description": "Resident steps out into backyard garden",
+      "source": "resident"
+    },
+    {
+      "ref": "timeline.T2",
+      "time": "2026-10-10T16:45",
+      "description": "Resident hears crashing sound and returns indoors",
+      "source": "resident"
+    }
+  ],
+  "notes": [
+    {
+      "ref": "notes.N1",
+      "type": "observation",
+      "text": "Investigator documented a broken vase near the window."
+    },
+    {
+      "ref": "notes.N2",
+      "type": "statement",
+      "text": "Resident heard crash sound at 16:45."
+    }
+  ],
+  "derived_facts": {
+    "unreviewed_detection_count": 0,
+    "dismissed_without_reason_count": 0,
+    "notes_without_timeline_match": 0,
+    "photo_coverage": [
+      "living_room: 1 window bay view"
+    ]
+  }
+}

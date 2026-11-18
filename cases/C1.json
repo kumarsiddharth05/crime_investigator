@@ -1,0 +1,108 @@
+{
+  "case": {
+    "id": "C-2026-001",
+    "type": "burglary",
+    "title": "Residential theft — Indiranagar, Bengaluru",
+    "incident_window": {
+      "start": "2026-02-10T14:30",
+      "end": "2026-02-10T19:45"
+    },
+    "rooms_covered": [
+      "bedroom"
+    ]
+  },
+  "evidence": [
+    {
+      "ref": "evidence.E1",
+      "label": "tampered digital safe",
+      "photo_ref": "photos.P1",
+      "det_ref": "photos.P1.d1",
+      "map_ref": "map.E1"
+    }
+  ],
+  "photos": [
+    {
+      "ref": "photos.P1",
+      "room": "bedroom",
+      "view": "wide view of bedroom closet and side dresser",
+      "detections": [
+        {
+          "ref": "photos.P1.d1",
+          "class": "safe",
+          "conf": 0.94,
+          "disposition": "confirmed",
+          "reason": null
+        },
+        {
+          "ref": "photos.P1.d2",
+          "class": "camera",
+          "conf": 0.79,
+          "disposition": "unreviewed",
+          "reason": null
+        }
+      ]
+    }
+  ],
+  "map": {
+    "room": "bedroom",
+    "dimensions_m": {
+      "w": 4.5,
+      "h": 3.8
+    },
+    "reference_points": [
+      {
+        "ref": "map.door",
+        "label": "bedroom door",
+        "xy": [0.0, 0.0]
+      },
+      {
+        "ref": "map.window",
+        "label": "bedroom window",
+        "xy": [4.5, 2.0]
+      }
+    ],
+    "evidence_positions_summary": [
+      "Evidence E1 (tampered digital safe) is at approx (4.2, 0.8) m — about 4.2 m from the bedroom door, inside the closet wall."
+    ],
+    "xy_optional": [
+      {
+        "ref": "map.E1",
+        "xy": [4.2, 0.8]
+      }
+    ]
+  },
+  "timeline": [
+    {
+      "ref": "timeline.T1",
+      "time": "2026-02-10T14:30",
+      "description": "Homeowner leaves residence",
+      "source": "homeowner"
+    },
+    {
+      "ref": "timeline.T2",
+      "time": "2026-02-10T19:45",
+      "description": "Homeowner returns and discovers theft",
+      "source": "homeowner"
+    }
+  ],
+  "notes": [
+    {
+      "ref": "notes.N1",
+      "type": "observation",
+      "text": "Closet door forced open and safe tampered with."
+    },
+    {
+      "ref": "notes.N2",
+      "type": "statement",
+      "text": "Homeowner left residence at 14:30 and returned at 19:45."
+    }
+  ],
+  "derived_facts": {
+    "unreviewed_detection_count": 1,
+    "dismissed_without_reason_count": 0,
+    "notes_without_timeline_match": 0,
+    "photo_coverage": [
+      "bedroom: 1 wide view"
+    ]
+  }
+}

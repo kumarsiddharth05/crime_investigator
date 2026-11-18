@@ -1,0 +1,101 @@
+{
+  "case": {
+    "id": "C-2026-005",
+    "type": "trespassing",
+    "title": "Property intrusion — Kadri, Mangaluru",
+    "incident_window": {
+      "start": "2026-05-02T23:30",
+      "end": "2026-05-03T00:30"
+    },
+    "rooms_covered": [
+      "living_room"
+    ]
+  },
+  "evidence": [
+    {
+      "ref": "evidence.E1",
+      "label": "black LED flashlight",
+      "photo_ref": "photos.P1",
+      "det_ref": "photos.P1.d1",
+      "map_ref": "map.E1"
+    }
+  ],
+  "photos": [
+    {
+      "ref": "photos.P1",
+      "room": "living_room",
+      "view": "facing main entryway and sofa area",
+      "detections": [
+        {
+          "ref": "photos.P1.d1",
+          "class": "flashlight",
+          "conf": 0.91,
+          "disposition": "confirmed",
+          "reason": null
+        }
+      ]
+    }
+  ],
+  "map": {
+    "room": "living_room",
+    "dimensions_m": {
+      "w": 5.0,
+      "h": 4.0
+    },
+    "reference_points": [
+      {
+        "ref": "map.door",
+        "label": "main door",
+        "xy": [0.0, 0.0]
+      },
+      {
+        "ref": "map.sofa",
+        "label": "sofa",
+        "xy": [2.5, 2.0]
+      }
+    ],
+    "evidence_positions_summary": [
+      "Evidence E1 (black LED flashlight) is ~1.8 m from the main door on the center table."
+    ],
+    "xy_optional": [
+      {
+        "ref": "map.E1",
+        "xy": [1.5, 1.0]
+      }
+    ]
+  },
+  "timeline": [
+    {
+      "ref": "timeline.T1",
+      "time": "2026-05-02T23:30",
+      "description": "Perimeter sensor activates",
+      "source": "alarm_log"
+    },
+    {
+      "ref": "timeline.T2",
+      "time": "2026-05-02T23:45",
+      "description": "Security officer inspects perimeter and enters hall",
+      "source": "security_guard"
+    }
+  ],
+  "notes": [
+    {
+      "ref": "notes.N1",
+      "type": "observation",
+      "text": "Dropped black LED flashlight recovered from center table."
+    },
+    {
+      "ref": "notes.N2",
+      "type": "observation",
+      "text": "Investigator noted muddy footprints leading toward the window."
+    }
+  ],
+  "derived_facts": {
+    "unreviewed_detection_count": 0,
+    "dismissed_without_reason_count": 0,
+    "notes_without_timeline_match": 0,
+    "photo_coverage": [
+      "living_room: 1 entryway view"
+    ]
+  }
+}

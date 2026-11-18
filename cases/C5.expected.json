@@ -1,0 +1,12 @@
+{
+  "clean": false,
+  "tier_a_expected": [],
+  "tier_b_expected": [
+    {
+      "type": "semantic_coverage_gap",
+      "about_refs": [
+        "notes.N2"
+      ]
+    }
+  ]
+}

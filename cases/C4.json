@@ -1,0 +1,125 @@
+{
+  "case": {
+    "id": "C-2026-004",
+    "type": "burglary",
+    "title": "Residential break-in — MCC B Block, Davangere",
+    "incident_window": {
+      "start": "2026-01-20T18:00",
+      "end": "2026-01-20T21:15"
+    },
+    "rooms_covered": [
+      "living_room"
+    ]
+  },
+  "evidence": [
+    {
+      "ref": "evidence.E1",
+      "label": "tampered steel jewelry box",
+      "photo_ref": "photos.P1",
+      "det_ref": "photos.P1.d1",
+      "map_ref": "map.E1"
+    }
+  ],
+  "photos": [
+    {
+      "ref": "photos.P1",
+      "room": "living_room",
+      "view": "wide view showing entryway, sofa, and dining credenza",
+      "detections": [
+        {
+          "ref": "photos.P1.d1",
+          "class": "jewelry_box",
+          "conf": 0.95,
+          "disposition": "confirmed",
+          "reason": null
+        },
+        {
+          "ref": "photos.P1.d2",
+          "class": "backpack",
+          "conf": 0.82,
+          "disposition": "dismissed",
+          "reason": "empty school bag belonging to child, verified"
+        },
+        {
+          "ref": "photos.P1.d3",
+          "class": "cell_phone",
+          "conf": 0.88,
+          "disposition": "dismissed",
+          "reason": "victim's own phone, accounted for"
+        }
+      ]
+    }
+  ],
+  "map": {
+    "room": "living_room",
+    "dimensions_m": {
+      "w": 5.5,
+      "h": 4.2
+    },
+    "reference_points": [
+      {
+        "ref": "map.door",
+        "label": "main entrance",
+        "xy": [0.0, 0.0]
+      },
+      {
+        "ref": "map.credenza",
+        "label": "dining credenza",
+        "xy": [3.5, 3.2]
+      }
+    ],
+    "evidence_positions_summary": [
+      "Evidence E1 (tampered steel jewelry box) is at approx (3.5, 3.2) m — placed on the dining credenza, ~4.7 m from the main entrance."
+    ],
+    "xy_optional": [
+      {
+        "ref": "map.E1",
+        "xy": [3.5, 3.2]
+      }
+    ]
+  },
+  "timeline": [
+    {
+      "ref": "timeline.T1",
+      "time": "2026-01-20T18:00",
+      "description": "Family locks residence and departs for temple function",
+      "source": "victim_statement"
+    },
+    {
+      "ref": "timeline.T2",
+      "time": "2026-01-20T21:15",
+      "description": "Family returns home and notices forced entryway lock",
+      "source": "victim_statement"
+    }
+  ],
+  "notes": [
+    {
+      "ref": "notes.N1",
+      "type": "observation",
+      "text": "Main door lock latch showed fresh jimmy marks."
+    },
+    {
+      "ref": "notes.N2",
+      "type": "observation",
+      "text": "Tampered steel jewelry box on credenza found open with velvet lining disturbed."
+    },
+    {
+      "ref": "notes.N3",
+      "type": "statement",
+      "text": "Resident confirmed family was away between 18:00 and 21:15."
+    },
+    {
+      "ref": "notes.N4",
+      "type": "remark",
+      "text": "Victim reported her cell phone missing from her bag."
+    }
+  ],
+  "derived_facts": {
+    "unreviewed_detection_count": 0,
+    "dismissed_without_reason_count": 0,
+    "notes_without_timeline_match": 0,
+    "photo_coverage": [
+      "living_room: 1 wide view"
+    ]
+  }
+}
