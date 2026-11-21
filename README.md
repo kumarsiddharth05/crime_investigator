@@ -1,35 +1,98 @@
-# Crime Scene LLM Analysis Harness
+# AI-Assisted Crime Scene Investigation and Evidence Analysis System
 
-CLI + evaluation harness that proves an LLM can generate grounded, citation-backed suggestions on structured crime-scene case data with zero hallucinations reaching the investigator.
+An investigator-oriented system for organizing crime-scene information, detecting visual objects, managing evidence, reconstructing spatial and temporal relationships, and identifying potential contradictions across case records.
 
-See [PROJECT_BRIEF.md](PROJECT_BRIEF.md) for full architecture and specifications.
+The system combines deterministic processing, computer vision, structured data management, and LLM-assisted analysis. Investigative decisions remain strictly under human control.
 
-## Evaluation Harness (`evaluate.py`)
+## Project Status
 
-The evaluation harness evaluates the entire pipeline across all case fixtures with matching `.expected.json` files in `cases/`. It measures Tier A rule detection, Tier B grounded suggestion generation, validator rejection rates, clean case false positives, and end-to-end latency against the acceptance targets defined in `PROJECT_BRIEF.md`.
+| Component | Status | Contract Reference |
+|---|---|---|
+| **Module 1 — LLM Analysis Engine** | **FROZEN & VERIFIED** | [docs/LLM_MODULE_HANDOVER.md](docs/LLM_MODULE_HANDOVER.md) |
+| **Module 2 — YOLO Detection & Evidence Management** | **ACTIVE** (Stage Y0 closed, Stage Y1 next) | [PROJECT_BRIEF.md](PROJECT_BRIEF.md) |
+| Module 3 — Spatial Mapping | Planned | [full _roadmap.md](full%20_roadmap.md) |
+| Module 4 — Timeline Reconstruction | Planned | [full _roadmap.md](full%20_roadmap.md) |
+| Module 5 — Case Context and Persistence | Planned | [full _roadmap.md](full%20_roadmap.md) |
+| Module 6 — Report Generation | Planned | [full _roadmap.md](full%20_roadmap.md) |
+| Module 8 — Investigator Application Interface | Planned | [full _roadmap.md](full%20_roadmap.md) |
 
-### Usage
+*Module numbering follows the existing project roadmap. Module 7 is not currently defined in the approved module structure.*
 
-- **Dry-run mode (offline logic validation without API spend):**
-  ```bash
-  python evaluate.py --dry-run-llm
-  ```
-  > **Note:** Dry-run mode validates harness and pipeline mechanics, schema compatibility, fixture loading, and Tier A rule detection. It does not validate LLM accuracy (Tier B suggestions will not be generated in dry run).
+## 4-Document Architecture
 
-- **Stub mode (replay recorded LLM responses):**
-  ```bash
-  python evaluate.py --stub-llm path/to/responses.json
-  ```
-  Loads pre-recorded JSON responses keyed by case ID and analysis type to benchmark validator and metric logic deterministically.
+The project operates under a concise 4-document governance model:
 
-- **Live evaluation (full end-to-end evaluation with live LLM):**
-  ```bash
-  python evaluate.py
-  ```
+| Document | Role |
+|---|---|
+| [README.md](README.md) | Permanent entry point, project status, core principles, and repository layout |
+| [full _roadmap.md](full%20_roadmap.md) | Complete multi-module roadmap, sequence, and cross-module completion criteria |
+| [PROJECT_BRIEF.md](PROJECT_BRIEF.md) | Active module specification (currently **Module 2 — YOLO Detection & Evidence Management**) |
+| [PLAN.md](PLAN.md) | Living operational record, verified facts, active milestones, and decision ledger |
+| [docs/LLM_MODULE_HANDOVER.md](docs/LLM_MODULE_HANDOVER.md) | Permanent frozen contract specification for Module 1 |
 
-- **Concurrency control (rate-limit mitigation):**
-  ```bash
-  python evaluate.py --max-concurrency 1
-  ```
-  Limits concurrent case processing (default: 4). Use `--max-concurrency 1` when operating under strict provider rate limits.
+## Architecture
 
+The project is organized as independent modules under `src/`:
+
+- **LLM Analysis (`src/analysis/`, `src/llm/`, `src/workflow/`):** Deterministic structural checks and validated semantic contradiction analysis. (Module 1 — Frozen).
+- **YOLO Detection (`src/yolo/`):** Candidate object detection, investigator review, and evidence management. (Module 2 — Active).
+- **Spatial Mapping:** Spatial reconstruction and evidence positioning. (Module 3 — Planned).
+- **Timeline Reconstruction:** Structured event and temporal analysis. (Module 4 — Planned).
+- **Case Context and Persistence:** Centralized database and structured context assembly. (Module 5 — Planned).
+- **Report Generation:** Traceable report generation. (Module 6 — Planned).
+- **Application Interface:** Integrated investigator desktop workflow. (Module 8 — Planned).
+
+Modules communicate through defined data contracts (`schemas/case_context.schema.json`) rather than depending directly on one another's internal implementations.
+
+## Repository Structure
+
+```text
+project/
+├── src/
+│   ├── analysis/          # Module 1 — rules engine, validator, pipeline (frozen)
+│   ├── llm/               # Module 1 — multi-provider client, rate limiter (frozen)
+│   ├── workflow/          # Module 1 — request/response envelopes, store, adapter (frozen)
+│   └── yolo/              # Module 2 — candidate detection, review, evidence (in progress)
+│
+├── schemas/               # Shared data contracts (case_context.schema.json)
+├── cases/                 # Case fixtures (C0–C7, C10–C14) and evaluation baselines
+├── tests/                 # Automated test suites
+├── scripts/               # Verification utilities (check_fixtures.py, check_refs.py)
+├── reports/               # Evaluation and benchmark reports
+├── docs/                  # Permanent module handover documents
+│   └── LLM_MODULE_HANDOVER.md
+│
+├── PLAN.md                # Living operational record
+├── PROJECT_BRIEF.md       # Active module specification (Module 2)
+├── README.md              # Project entry point
+└── full _roadmap.md       # Master roadmap
+```
+
+## Existing Module 1 Baseline
+
+The frozen LLM Analysis Module has a verified baseline:
+
+- **163 passing tests** across unit, pipeline, validator, and workflow suites.
+- **13 valid case fixtures** conforming to Draft-07 JSON schema.
+- **13 successfully resolved fixture references** via `src/analysis/refs.py`.
+- **0 Pyrefly errors** on `src/` and `tests/`.
+- Successful live evaluation on Groq `openai/gpt-oss-120b` across all 13 established fixtures (1.00 Tier A recall, 1.00 Tier B precision/recall, 0 clean-case false positives, 0 API/429 errors).
+
+For exact benchmark provenance, limitations, and frozen contracts, see [docs/LLM_MODULE_HANDOVER.md](docs/LLM_MODULE_HANDOVER.md).
+
+## Development Principles
+
+1. Investigator decisions remain strictly authoritative.
+2. Machine-generated detections are candidates, not established evidence.
+3. Original photographs and source records remain immutable and read-only.
+4. Every finding must be traceable to its source records via dotted references.
+5. Modules communicate through explicit schema contracts without cross-module coupling.
+6. Automated tests must execute completely offline without live external services.
+7. Model outputs must pass validation gates before presentation.
+8. No module independently determines guilt, intent, or criminal responsibility.
+
+## Current Development Focus
+
+- **Active Module:** **Module 2 — YOLO Candidate Detection, Investigator Review & Evidence Management**
+- **Current Milestone:** Stage Y0 (Pre-design inspection & documentation alignment) is **CLOSED**.
+- **Next Active Task:** **Stage Y1 — Core Domain Entities, Storage Layout & Models**.
