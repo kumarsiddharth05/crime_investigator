@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import time
 from typing import Any
 from unittest.mock import MagicMock, patch
 import pytest
@@ -27,6 +28,7 @@ except ImportError:
 from src.llm import (
     DEFAULT_TEMPERATURE,
     DEFAULT_TIMEOUT_SECONDS,
+    GroqRateLimiter,
     LLMAuthenticationError,
     LLMClient,
     LLMConfigurationError,
@@ -36,6 +38,7 @@ from src.llm import (
     LLMTransportError,
     build_prompt,
     call_llm,
+    groq_rate_limiter,
     sanitize_case_context,
 )
 
@@ -1077,8 +1080,10 @@ def test_groq_missing_api_key_raises_error(monkeypatch):
         LLMConfig(provider="groq", model="openai/gpt-oss-120b", api_key="")
 
 
-def test_groq_request_dispatch_and_normalization(sample_case_context):
+def test_groq_request_dispatch_and_normalization(sample_case_context, monkeypatch):
     """Groq call dispatches to Groq chat completions endpoint with normalized response."""
+    monkeypatch.setenv("GROQ_COOLDOWN_SECONDS", "0.0")
+    groq_rate_limiter.reset()
     recorded_requests = []
 
     def mock_handler(request: httpx.Request) -> httpx.Response:
@@ -1141,8 +1146,11 @@ def test_groq_request_dispatch_and_normalization(sample_case_context):
     }
 
 
-def test_groq_rate_limit_error_handling(sample_case_context):
+def test_groq_rate_limit_error_handling(sample_case_context, monkeypatch):
     """Groq HTTP 429 maps to LLMRateLimitError identifying Groq as provider."""
+    monkeypatch.setenv("GROQ_COOLDOWN_SECONDS", "0.0")
+    groq_rate_limiter.reset()
+
     def mock_handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(429, text="Rate limit reached for Groq organization")
 
@@ -1156,6 +1164,119 @@ def test_groq_rate_limit_error_handling(sample_case_context):
 
     assert "groq" in str(exc_info.value).lower()
     assert "429" in str(exc_info.value)
+
+
+# --- 11. GroqRateLimiter Unit Tests ---
+
+def test_groq_rate_limiter_acquire_interval(monkeypatch):
+    """Rate limiter enforces interval between calls."""
+    limiter = GroqRateLimiter(default_interval=0.05)
+    t0 = limiter.acquire()
+    assert t0 == 0.0
+
+    # Second call immediately should wait roughly 0.05s
+    start = time.perf_counter()
+    waited = limiter.acquire()
+    elapsed = time.perf_counter() - start
+
+    assert waited > 0.0
+    assert elapsed >= 0.04  # allow slight timing jitter
+
+
+def test_groq_rate_limiter_env_override(monkeypatch):
+    """GROQ_COOLDOWN_SECONDS environment variable overrides default interval."""
+    limiter = GroqRateLimiter()
+    assert limiter.cooldown_seconds == 20.0
+
+    monkeypatch.setenv("GROQ_COOLDOWN_SECONDS", "2.5")
+    assert limiter.cooldown_seconds == 2.5
+
+    monkeypatch.setenv("GROQ_COOLDOWN_SECONDS", "invalid")
+    assert limiter.cooldown_seconds == 20.0
+
+
+def test_groq_rate_limiter_wait_time_tracking():
+    """Rate limiter tracks total cooldown wait time."""
+    limiter = GroqRateLimiter(default_interval=0.03)
+    assert limiter.total_wait_time == 0.0
+
+    limiter.acquire()
+    assert limiter.total_wait_time == 0.0
+
+    # Second call waits ~0.03s
+    limiter.acquire()
+    assert limiter.total_wait_time >= 0.02
+
+    limiter.reset()
+    assert limiter.total_wait_time == 0.0
+
+
+def test_groq_rate_limiter_429_retry_after():
+    """Rate limiter extracts retry-after header on HTTP 429."""
+    limiter = GroqRateLimiter()
+    res = httpx.Response(429, headers={"retry-after": "3.5"}, text="Rate limit exceeded")
+    limiter.update_from_response(res)
+
+    now = time.perf_counter()
+    assert limiter._next_allowed_time > now + 3.0
+
+
+def test_groq_rate_limiter_429_body_parsing():
+    """Rate limiter extracts retry delay from JSON message on HTTP 429."""
+    limiter = GroqRateLimiter()
+    res = httpx.Response(
+        429,
+        json={"error": {"message": "Rate limit reached. Please try again in 4.2s."}},
+    )
+    limiter.update_from_response(res)
+
+    now = time.perf_counter()
+    assert limiter._next_allowed_time > now + 4.0
+
+
+def test_groq_rate_limiter_token_budget_backoff():
+    """Rate limiter throttles when x-ratelimit-remaining-tokens is critically low (<2500)."""
+    limiter = GroqRateLimiter()
+    # Safe tokens remaining (>2500) -> no dynamic extension
+    res_safe = httpx.Response(
+        200,
+        headers={"x-ratelimit-remaining-tokens": "5000", "x-ratelimit-reset-tokens": "1.2s"},
+    )
+    limiter.update_from_response(res_safe)
+    assert limiter._next_allowed_time == 0.0
+
+    # Low tokens remaining (<2500) -> extends next allowed time
+    res_low = httpx.Response(
+        200,
+        headers={"x-ratelimit-remaining-tokens": "1200", "x-ratelimit-reset-tokens": "2.5s"},
+    )
+    limiter.update_from_response(res_low)
+    now = time.perf_counter()
+    assert limiter._next_allowed_time > now + 2.0
+
+
+def test_groq_rate_limiter_thread_safety():
+    """Rate limiter safely synchronizes concurrent calls across multiple threads."""
+    import concurrent.futures
+
+    limiter = GroqRateLimiter(default_interval=0.02)
+    timestamps = []
+
+    def call():
+        limiter.acquire()
+        timestamps.append(time.perf_counter())
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+        futures = [executor.submit(call) for _ in range(4)]
+        concurrent.futures.wait(futures)
+
+    assert len(timestamps) == 4
+    timestamps.sort()
+    # Each call should be separated by approx 0.02s
+    for i in range(1, len(timestamps)):
+        diff = timestamps[i] - timestamps[i - 1]
+        assert diff >= 0.015  # within margin of timer resolution
+
 
 
 

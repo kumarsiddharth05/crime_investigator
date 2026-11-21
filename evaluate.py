@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 from concurrent.futures import ThreadPoolExecutor
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -22,10 +23,18 @@ import dotenv
 dotenv.load_dotenv(dotenv_path=Path.cwd() / ".env")
 
 from src.analysis.pipeline import run_pipeline
-from src.llm import LLMClient, LLMConfig, LLMResponse, PERMITTED_TIER_B_TYPES
+from src.llm import (
+    LLMClient,
+    LLMConfig,
+    LLMResponse,
+    PERMITTED_TIER_B_TYPES,
+    groq_rate_limiter,
+)
 
 CASES_DIR = Path(__file__).resolve().parent / "cases"
 REPORTS_DIR = Path(__file__).resolve().parent / "reports"
+CHECKPOINTS_DIR = REPORTS_DIR / "checkpoints"
+ACTIVE_CHECKPOINT_FILE = CHECKPOINTS_DIR / "eval_checkpoint_active.json"
 
 # Acceptance targets defined in PROJECT_BRIEF.md §11
 ACCEPTANCE_TARGETS = {
@@ -37,6 +46,37 @@ ACCEPTANCE_TARGETS = {
     "clean_cases_fp": {"target": 0, "op": "==", "display": "0", "required": True},
     "median_latency_ms": {"target": 6000.0, "op": "<", "display": "<6000 ms", "required": True},
 }
+
+
+# --- Checkpoint Management ---
+
+def compute_fixture_fingerprint(fixtures: list[tuple[str, Path, Path]]) -> str:
+    """Compute sha256 fingerprint of all discovered fixtures and expected results."""
+    h = hashlib.sha256()
+    for stem, case_p, exp_p in fixtures:
+        h.update(stem.encode("utf-8"))
+        h.update(case_p.read_bytes())
+        h.update(exp_p.read_bytes())
+    return h.hexdigest()
+
+
+def save_checkpoint(checkpoint_data: dict[str, Any], path: Path = ACTIVE_CHECKPOINT_FILE) -> None:
+    """Save evaluation checkpoint atomically to prevent corruption on interruption."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    checkpoint_data["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    tmp_path = path.with_suffix(".tmp")
+    tmp_path.write_text(json.dumps(checkpoint_data, indent=2, ensure_ascii=False), encoding="utf-8")
+    tmp_path.replace(path)
+
+
+def load_checkpoint(path: Path = ACTIVE_CHECKPOINT_FILE) -> dict[str, Any] | None:
+    """Load active checkpoint if it exists and is valid JSON."""
+    if not path.is_file():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
 
 
 # --- Evaluation Client (Dry-Run / Stub / Live Wrapper) ---
@@ -268,8 +308,10 @@ def evaluate_case(
     case_path: Path,
     expected_path: Path,
     client: EvaluationLLMClient,
+    in_progress_categories: dict[str, Any] | None = None,
+    on_category_complete: Any | None = None,
 ) -> dict[str, Any]:
-    """Execute evaluation for a single case fixture."""
+    """Execute evaluation for a single case fixture with category-level checkpointing."""
     case_data = json.loads(case_path.read_text(encoding="utf-8"))
     expected_data = json.loads(expected_path.read_text(encoding="utf-8"))
 
@@ -304,10 +346,33 @@ def evaluate_case(
     tokens = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
     errors: list[str] = []
 
-    # Measure wall-clock time around the complete evaluation of the case
     case_start_time = time.perf_counter()
 
     for idx, category in enumerate(categories_to_run):
+        # 1. Check if category already completed in checkpoint
+        if in_progress_categories and category in in_progress_categories:
+            cached = in_progress_categories[category]
+            if idx == 0 and "tier_a_flags" in cached:
+                tier_a_flags = cached["tier_a_flags"]
+
+            validated_suggestions.extend(cached.get("tier_b_suggestions", []))
+            rejected_suggestions.extend(cached.get("rejected_suggestions", []))
+
+            c_stats = cached.get("stats", {})
+            total_received += c_stats.get("received", 0)
+            total_rejected += c_stats.get("rejected", 0)
+            for k, v in c_stats.get("drop_reasons", {}).items():
+                drop_reasons[k] += v
+
+            tokens["prompt_tokens"] += cached.get("tokens", {}).get("prompt_tokens", 0)
+            tokens["completion_tokens"] += cached.get("tokens", {}).get("completion_tokens", 0)
+            tokens["total_tokens"] += cached.get("tokens", {}).get("total_tokens", 0)
+
+            if "inv_latency" in cached:
+                provider_latencies.append(cached["inv_latency"])
+            continue
+
+        # 2. Execute pipeline for category
         try:
             res = run_pipeline(
                 case_context=case_data,
@@ -329,11 +394,15 @@ def evaluate_case(
             for k, v in val_stats.get("drop_reasons", {}).items():
                 drop_reasons[k] += v
 
-            tokens["prompt_tokens"] += val_stats.get("total_prompt_tokens", 0)
-            tokens["completion_tokens"] += val_stats.get("total_completion_tokens", 0)
-            tokens["total_tokens"] += val_stats.get("total_tokens", 0)
+            cat_tokens = {
+                "prompt_tokens": val_stats.get("total_prompt_tokens", 0),
+                "completion_tokens": val_stats.get("total_completion_tokens", 0),
+                "total_tokens": val_stats.get("total_tokens", 0),
+            }
+            tokens["prompt_tokens"] += cat_tokens["prompt_tokens"]
+            tokens["completion_tokens"] += cat_tokens["completion_tokens"]
+            tokens["total_tokens"] += cat_tokens["total_tokens"]
 
-            # Record per-invocation provider latency for diagnostic tracking
             inv_latency = val_stats.get("total_latency_ms", 0.0)
             provider_latencies.append(inv_latency)
 
@@ -347,6 +416,20 @@ def evaluate_case(
                     )
                 ):
                     client.rate_limited_count += 1
+
+            cat_data = {
+                "tier_b_suggestions": res.tier_b_suggestions,
+                "rejected_suggestions": res.rejected_suggestions,
+                "stats": val_stats,
+                "invocation_outcomes": res.invocation_outcomes,
+                "tokens": cat_tokens,
+                "inv_latency": inv_latency,
+            }
+            if idx == 0:
+                cat_data["tier_a_flags"] = res.tier_a_flags
+
+            if on_category_complete:
+                on_category_complete(fixture_stem, category, cat_data)
 
         except Exception as exc:
             errors.append(f"Pipeline error on {fixture_stem} [{category}]: {exc}")
@@ -385,8 +468,10 @@ def evaluate_all(
     stub_path: Path | None = None,
     max_concurrency: int = 2,
     live_config: LLMConfig | None = None,
+    reset_checkpoint: bool = False,
+    use_checkpoint: bool | None = None,
 ) -> dict[str, Any]:
-    """Execute complete evaluation harness across all discoverable fixtures."""
+    """Execute complete evaluation harness across all discoverable fixtures with checkpointing."""
     fixtures = discover_fixtures(cases_dir)
     if not fixtures:
         raise FileNotFoundError(f"No case fixtures with .expected.json found in {cases_dir}")
@@ -407,6 +492,81 @@ def evaluate_all(
         live_client=live_client,
     )
 
+    if use_checkpoint is None:
+        use_checkpoint = (mode == "live")
+
+    active_cp: dict[str, Any] = {}
+    completed_fixtures: dict[str, Any] = {}
+    in_progress_categories: dict[str, Any] = {}
+    resumption_count = 0
+    benchmark_start_time = time.time()
+    initial_cooldown_wait_s = 0.0
+
+    if use_checkpoint:
+        CHECKPOINTS_DIR.mkdir(parents=True, exist_ok=True)
+        if reset_checkpoint and ACTIVE_CHECKPOINT_FILE.exists():
+            ACTIVE_CHECKPOINT_FILE.unlink()
+            print("[CHECKPOINT] Reset active checkpoint. Starting fresh.")
+
+        existing_cp = load_checkpoint(ACTIVE_CHECKPOINT_FILE)
+        provider_name = getattr(live_client.config, "provider", "") if live_client else mode
+        model_name = getattr(live_client.config, "model", "") if live_client else mode
+        current_meta = {
+            "provider": provider_name,
+            "model": model_name,
+            "mode": mode,
+            "fixture_stems": [stem for stem, _, _ in fixtures],
+            "fixture_fingerprint": compute_fixture_fingerprint(fixtures),
+        }
+
+        if existing_cp:
+            cp_meta = existing_cp.get("config_metadata", {})
+            if (
+                cp_meta.get("provider") != current_meta["provider"]
+                or cp_meta.get("model") != current_meta["model"]
+                or cp_meta.get("mode") != current_meta["mode"]
+                or cp_meta.get("fixture_fingerprint") != current_meta["fixture_fingerprint"]
+            ):
+                raise RuntimeError(
+                    f"Checkpoint configuration mismatch: active checkpoint is configured for "
+                    f"'{cp_meta.get('provider')}/{cp_meta.get('model')}' with fingerprint {cp_meta.get('fixture_fingerprint', '')[:8]}..., "
+                    f"but current execution is configured for '{current_meta['provider']}/{current_meta['model']}' "
+                    f"with fingerprint {current_meta['fixture_fingerprint'][:8]}.... "
+                    f"Run with --reset-checkpoint to discard previous checkpoint."
+                )
+            active_cp = existing_cp
+            completed_fixtures = active_cp.get("completed_fixtures", {})
+            in_progress_categories = active_cp.get("in_progress_categories", {})
+            resumption_count = active_cp.get("resumption_count", 0) + 1
+            benchmark_start_time = active_cp.get("benchmark_start_time", benchmark_start_time)
+            initial_cooldown_wait_s = active_cp.get("total_cooldown_wait_s", 0.0)
+            active_cp["resumption_count"] = resumption_count
+            save_checkpoint(active_cp, ACTIVE_CHECKPOINT_FILE)
+            print(f"[CHECKPOINT] Resuming evaluation session #{resumption_count}: {len(completed_fixtures)}/{len(fixtures)} fixtures completed.")
+        else:
+            active_cp = {
+                "version": 1,
+                "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "config_metadata": current_meta,
+                "benchmark_start_time": benchmark_start_time,
+                "resumption_count": 0,
+                "total_cooldown_wait_s": 0.0,
+                "completed_fixtures": {},
+                "in_progress_categories": {},
+            }
+            save_checkpoint(active_cp, ACTIVE_CHECKPOINT_FILE)
+
+    def on_category_complete(stem: str, cat: str, cat_data: dict[str, Any]) -> None:
+        if not use_checkpoint:
+            return
+        if "in_progress_categories" not in active_cp:
+            active_cp["in_progress_categories"] = {}
+        if stem not in active_cp["in_progress_categories"]:
+            active_cp["in_progress_categories"][stem] = {}
+        active_cp["in_progress_categories"][stem][cat] = cat_data
+        active_cp["total_cooldown_wait_s"] = initial_cooldown_wait_s + groq_rate_limiter.total_wait_time
+        save_checkpoint(active_cp, ACTIVE_CHECKPOINT_FILE)
+
     per_case_results: list[dict[str, Any]] = []
 
     try:
@@ -419,13 +579,32 @@ def evaluate_all(
                 for fut in futures:
                     per_case_results.append(fut.result())
         else:
-            # Sequential execution for dry-run, stub, or concurrency=1
+            # Sequential execution
             for idx, (stem, case_p, exp_p) in enumerate(fixtures):
-                res = evaluate_case(stem, case_p, exp_p, client)
+                if use_checkpoint and stem in completed_fixtures:
+                    print(f"  [CHECKPOINT REUSED] Fixture {stem} already completed ({len(per_case_results) + 1}/{len(fixtures)}).")
+                    per_case_results.append(completed_fixtures[stem])
+                    continue
+
+                print(f"  [EVALUATING] Fixture {stem} ({len(per_case_results) + 1}/{len(fixtures)})...")
+                stem_in_prog = in_progress_categories.get(stem) if use_checkpoint else None
+                res = evaluate_case(
+                    fixture_stem=stem,
+                    case_path=case_p,
+                    expected_path=exp_p,
+                    client=client,
+                    in_progress_categories=stem_in_prog,
+                    on_category_complete=on_category_complete if use_checkpoint else None,
+                )
                 per_case_results.append(res)
-                # In live mode, pause 2 seconds between case boundaries
-                if mode == "live" and idx < len(fixtures) - 1:
-                    time.sleep(2.0)
+
+                if use_checkpoint:
+                    completed_fixtures[stem] = res
+                    active_cp.get("in_progress_categories", {}).pop(stem, None)
+                    active_cp["completed_fixtures"] = completed_fixtures
+                    active_cp["total_cooldown_wait_s"] = initial_cooldown_wait_s + groq_rate_limiter.total_wait_time
+                    save_checkpoint(active_cp, ACTIVE_CHECKPOINT_FILE)
+                    print(f"  [CHECKPOINT SAVED] Fixture {stem} completed and saved ({len(completed_fixtures)}/{len(fixtures)}).")
     finally:
         if live_client is not None:
             live_client.close()
@@ -470,7 +649,7 @@ def evaluate_all(
 
     hallucination_rate = (tot_rejected / tot_received) if tot_received > 0 else 0.0
 
-    # Latency evaluation: live mode evaluates end-to-end wall-clock latency per case; dry-run and stub are non-representative
+    # Latency evaluation
     if mode == "live":
         all_case_latencies = [
             r["latency_ms"] for r in per_case_results
@@ -538,6 +717,7 @@ def evaluate_all(
         "denominator": tot_received,
         "target": ACCEPTANCE_TARGETS["hallucination_rate"]["display"],
         "status": eval_metric("hallucination_rate", hallucination_rate, ACCEPTANCE_TARGETS["hallucination_rate"]),
+        "policy": "Reviewed individually",
     }
     target_results["clean_cases_fp"] = {
         "value": clean_cases_fp,
@@ -550,20 +730,19 @@ def evaluate_all(
         "display_value": latency_display,
         "target": ACCEPTANCE_TARGETS["median_latency_ms"]["display"],
         "status": latency_status,
+        "policy": "Informational (retired as pass/fail criterion)",
     }
 
-    # Aggregate status evaluation: no false PASS when a required metric is N/A or FAIL.
+    # Aggregate status evaluation: no false PASS when a required analytical metric is N/A or FAIL.
     if mode == "live":
+        # Analytical acceptance criteria (Prompt 12.2: latency 6000ms threshold retired, hallucination reviewed individually)
         required_targets = [
             "tier_a_recall",
             "tier_b_recall",
             "tier_b_precision",
-            "hallucination_rate",
             "clean_cases_fp",
-            "median_latency_ms",
         ]
     elif mode == "stub":
-        # Stub replay evaluates accuracy targets; latency is non-representative
         required_targets = [
             "tier_a_recall",
             "tier_b_recall",
@@ -583,6 +762,44 @@ def evaluate_all(
     passed_overall = all(
         target_results[k]["status"] == "PASS" for k in required_targets
     )
+
+    total_benchmark_duration_s = time.time() - benchmark_start_time
+    total_cooldown_wait_s = initial_cooldown_wait_s + (groq_rate_limiter.total_wait_time if live_client else 0.0)
+
+    # Detailed latency metrics
+    all_provider_latencies = [
+        lat for r in per_case_results for lat in r.get("diagnostic_provider_latencies_ms", [])
+        if lat is not None and lat > 0.0
+    ]
+    median_prov_lat = statistics.median(all_provider_latencies) if all_provider_latencies else None
+
+    latency_details = {
+        "provider_request_latency": {
+            "count": len(all_provider_latencies),
+            "median_ms": round(median_prov_lat, 2) if median_prov_lat is not None else None,
+            "min_ms": round(min(all_provider_latencies), 2) if all_provider_latencies else None,
+            "max_ms": round(max(all_provider_latencies), 2) if all_provider_latencies else None,
+            "values": all_provider_latencies,
+        },
+        "complete_case_latency": {
+            "count": len(all_case_latencies),
+            "median_ms": round(median_latency, 2) if median_latency is not None else None,
+            "min_ms": round(min(all_case_latencies), 2) if all_case_latencies else None,
+            "max_ms": round(max(all_case_latencies), 2) if all_case_latencies else None,
+            "values": all_case_latencies,
+        },
+        "total_cooldown_wait_seconds": round(total_cooldown_wait_s, 2),
+        "total_benchmark_duration_seconds": round(total_benchmark_duration_s, 2),
+    }
+
+    # Finalize checkpoint when all fixtures complete
+    if use_checkpoint and len(completed_fixtures) == len(fixtures):
+        ts = time.strftime("%Y%m%d_%H%M%S", time.gmtime())
+        archive_path = CHECKPOINTS_DIR / f"eval_checkpoint_{ts}.json"
+        save_checkpoint(active_cp, archive_path)
+        if ACTIVE_CHECKPOINT_FILE.exists():
+            ACTIVE_CHECKPOINT_FILE.unlink()
+        print(f"[CHECKPOINT] Finalized: archived to {archive_path.name} and cleaned active checkpoint.")
 
     return {
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -618,6 +835,17 @@ def evaluate_all(
             "median": median_latency,
             "display": latency_display,
             "values": all_case_latencies,
+        },
+        "latency_details": latency_details,
+        "tokens": {
+            "prompt_tokens": sum(r.get("tokens", {}).get("prompt_tokens", 0) for r in per_case_results),
+            "completion_tokens": sum(r.get("tokens", {}).get("completion_tokens", 0) for r in per_case_results),
+            "total_tokens": sum(r.get("tokens", {}).get("total_tokens", 0) for r in per_case_results),
+            "total_requests": len(all_provider_latencies),
+        },
+        "checkpoint_info": {
+            "resumption_count": resumption_count,
+            "completed_sessions": resumption_count + 1,
         },
         "targets": target_results,
         "passed": passed_overall,
@@ -679,6 +907,11 @@ def format_aggregate_table(targets: dict[str, Any]) -> str:
             val_str = str(val)
 
         target_str = spec["target"]
+        if label == "Median latency" and spec.get("policy"):
+            target_str = spec["policy"]
+        elif label == "Hallucination rate" and spec.get("policy"):
+            target_str = spec["policy"]
+
         status_str = spec["status"]
         lines.append(f"| {label} | {val_str} | {target_str} | {status_str} |")
 
@@ -707,12 +940,21 @@ def write_reports(eval_data: dict[str, Any], reports_dir: Path) -> tuple[Path, P
     clean_count = eval_data.get("clean_cases_count", 0)
     total_count = len(eval_data.get("fixtures", []))
 
+    lat_info = eval_data.get("latency_details", {})
+    prov_lat = lat_info.get("provider_request_latency", {})
+    case_lat = lat_info.get("complete_case_latency", {})
+    cooldown_s = lat_info.get("total_cooldown_wait_seconds", 0.0)
+    duration_s = lat_info.get("total_benchmark_duration_seconds", 0.0)
+
+    token_info = eval_data.get("tokens", {})
+    cp_info = eval_data.get("checkpoint_info", {})
+
     md_content = f"""# Evaluation Report — {eval_data['timestamp']}
 
 - **Mode:** `{eval_data['mode']}`
 - **Concurrency:** `{eval_data['max_concurrency']}`
 - **Fixtures Evaluated:** {total_count} (Clean fixtures: {clean_count})
-- **Overall Status:** **{status_overall}**
+- **Analytical Acceptance Status:** **{status_overall}**
 
 ## Per-Case Results
 
@@ -726,6 +968,18 @@ def write_reports(eval_data: dict[str, Any], reports_dir: Path) -> tuple[Path, P
 - **Total Suggestions Received:** {rejections['received']}
 - **Total Validator Dropped:** {rejections['rejected']}
 - **Rejection Breakdown:** {drop_breakdown}
+
+### Operational & Latency Analysis
+- **Median Complete-Case Latency:** {case_lat.get('median_ms', 'N/A')} ms (Min: {case_lat.get('min_ms', 'N/A')} ms, Max: {case_lat.get('max_ms', 'N/A')} ms)
+- **Median Provider Request Latency:** {prov_lat.get('median_ms', 'N/A')} ms (Requests: {prov_lat.get('count', 0)})
+- **Total Cooldown Wait Time:** {cooldown_s:.2f} s
+- **Total Benchmark Duration:** {duration_s:.2f} s
+- **Total Token Consumption:** {token_info.get('total_tokens', 0)} (Prompt: {token_info.get('prompt_tokens', 0)}, Completion: {token_info.get('completion_tokens', 0)})
+- **Checkpoint Resumptions:** {cp_info.get('resumption_count', 0)} (Completed over {cp_info.get('completed_sessions', 1)} session(s))
+
+### Operational Policy & Notes
+- **Latency Acceptance Retirement:** Median complete-case latency (<6000 ms) is retired as a pass/fail acceptance criterion per Prompt 12.2 to prioritize investigator-facing analytical correctness under provider rate limits.
+- **Provider Rate Limiting:** 20-second transport cooldown enforced between consecutive Groq HTTP requests to protect 8,000 TPM limit.
 
 *Audit records for individual cases are preserved in `runs/`.*
 """
@@ -771,6 +1025,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=str(REPORTS_DIR),
         help="Path to directory where evaluation reports will be saved",
     )
+    parser.add_argument(
+        "--reset-checkpoint",
+        action="store_true",
+        default=False,
+        help="Discard any existing active checkpoint and restart benchmark from scratch",
+    )
     return parser
 
 
@@ -806,6 +1066,7 @@ def main(args_list: list[str] | None = None) -> int:
             mode=mode,
             stub_path=stub_path,
             max_concurrency=args.max_concurrency,
+            reset_checkpoint=args.reset_checkpoint,
         )
     except FileNotFoundError as err:
         print(f"Configuration/Fixture Error: {err}", file=sys.stderr)
