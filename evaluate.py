@@ -17,6 +17,10 @@ import sys
 import time
 from typing import Any
 
+import dotenv
+
+dotenv.load_dotenv(dotenv_path=Path.cwd() / ".env")
+
 from src.analysis.pipeline import run_pipeline
 from src.llm import LLMClient, LLMConfig, LLMResponse, PERMITTED_TIER_B_TYPES
 

@@ -268,7 +268,11 @@ def run_pipeline(
             client_owned = True
 
         try:
-            for category in selected_categories:
+            for idx, category in enumerate(selected_categories):
+                # Pacing pause between multi-category calls on Groq to respect 8,000 TPM bucket
+                if idx > 0 and getattr(active_client.config, "provider", "") == "groq":
+                    time.sleep(12.0)
+
                 inv_start = time.perf_counter()
                 try:
                     llm_res = active_client.analyze_case(

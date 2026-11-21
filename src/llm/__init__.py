@@ -11,6 +11,7 @@ from src.llm.client import (
     LLMRateLimitError,
     LLMResponse,
     LLMTransportError,
+    call_llm,
     validate_response_shape,
 )
 from src.llm.prompt_builder import (
@@ -31,6 +32,7 @@ __all__ = [
     "LLMRateLimitError",
     "LLMResponse",
     "LLMTransportError",
+    "call_llm",
     "PERMITTED_TIER_B_TYPES",
     "PromptBundle",
     "build_prompt",
