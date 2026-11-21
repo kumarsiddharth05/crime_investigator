@@ -1,8 +1,8 @@
 """Provider-agnostic LLM client implementation.
 
-Provides a unified interface to OpenAI, Gemini, and Anthropic with:
+Provides a unified interface to OpenAI, Gemini, Anthropic, OpenRouter, and Groq with:
 - Fixed temperature 0.0 and timeout 20.0 seconds
-- Explicit model configuration (no stale defaults, defaulting to gemini-3.8-flash for Gemini)
+- Explicit model configuration (defaults to gemini-3.8-flash for Gemini, openai/gpt-oss-120b for Groq)
 - Structured JSON output mode across providers
 - Interactions API integration for Gemini 3.8
 - Controlled retries (up to 2 retries, 3 total attempts) for schema/parsing errors
@@ -16,10 +16,11 @@ from __future__ import annotations
 import json
 import os
 import time
-from typing import Any
+from typing import Any, NoReturn
 
 import httpx
 
+# pyrefly: ignore [missing-import]
 from src.llm.prompt_builder import PromptBundle, build_prompt
 
 SUPPORTED_PROVIDERS: frozenset[str] = frozenset({"openai", "gemini", "anthropic", "openrouter", "groq"})
@@ -76,7 +77,7 @@ class LLMConfig:
         if not resolved_model and self.provider == "gemini":
             resolved_model = "gemini-3.8-flash"
         elif not resolved_model and self.provider == "groq":
-            resolved_model = "llama-3.3-70b-versatile"
+            resolved_model = "openai/gpt-oss-120b"
         self.model = resolved_model
         self.timeout = float(timeout)
         self.temperature = float(temperature)
@@ -213,6 +214,9 @@ class MessageBundle:
     def __init__(self, system_prompt: str, user_prompt: str) -> None:
         self.system_prompt = system_prompt
         self.user_prompt = user_prompt
+
+
+PromptPayload = PromptBundle | MessageBundle
 
 
 class LLMClient:
@@ -374,7 +378,7 @@ class LLMClient:
 
     def _dispatch_call(
         self,
-        bundle: PromptBundle,
+        bundle: PromptPayload,
         history: list[tuple[str, str]],
     ) -> tuple[str, dict[str, int], str]:
         """Route call to the provider-specific isolated handler.
@@ -417,7 +421,7 @@ class LLMClient:
 
     def _call_openai_compatible(
         self,
-        bundle: PromptBundle,
+        bundle: PromptPayload,
         history: list[tuple[str, str]],
         endpoint_url: str,
         provider_name: str,
@@ -465,7 +469,7 @@ class LLMClient:
     # --- OpenAI Adapter ---
 
     def _call_openai(
-        self, bundle: PromptBundle, history: list[tuple[str, str]]
+        self, bundle: PromptPayload, history: list[tuple[str, str]]
     ) -> tuple[str, dict[str, int], str]:
         return self._call_openai_compatible(
             bundle=bundle,
@@ -477,7 +481,7 @@ class LLMClient:
     # --- OpenRouter Adapter ---
 
     def _call_openrouter(
-        self, bundle: PromptBundle, history: list[tuple[str, str]]
+        self, bundle: PromptPayload, history: list[tuple[str, str]]
     ) -> tuple[str, dict[str, int], str]:
         return self._call_openai_compatible(
             bundle=bundle,
@@ -489,7 +493,7 @@ class LLMClient:
     # --- Groq Adapter ---
 
     def _call_groq(
-        self, bundle: PromptBundle, history: list[tuple[str, str]]
+        self, bundle: PromptPayload, history: list[tuple[str, str]]
     ) -> tuple[str, dict[str, int], str]:
         return self._call_openai_compatible(
             bundle=bundle,
@@ -500,7 +504,7 @@ class LLMClient:
 
     # --- Gemini Adapter (Google Interactions API) ---
 
-    def _handle_gemini_errors(self, exc: Exception) -> None:
+    def _handle_gemini_errors(self, exc: Exception) -> NoReturn:
         """Map Gemini SDK / HTTP errors to controlled exceptions."""
         code = getattr(exc, "status_code", None)
         if code is None:
@@ -545,7 +549,7 @@ class LLMClient:
         }
 
     def _call_gemini(
-        self, bundle: PromptBundle, history: list[tuple[str, str]]
+        self, bundle: PromptPayload, history: list[tuple[str, str]]
     ) -> tuple[str, dict[str, int], str]:
         try:
             from google import genai
@@ -615,7 +619,7 @@ class LLMClient:
     # --- Anthropic Adapter ---
 
     def _call_anthropic(
-        self, bundle: PromptBundle, history: list[tuple[str, str]]
+        self, bundle: PromptPayload, history: list[tuple[str, str]]
     ) -> tuple[str, dict[str, int], str]:
         url = "https://api.anthropic.com/v1/messages"
         headers = {

@@ -1036,12 +1036,24 @@ def test_genuine_transport_connection_error_no_retry(sample_case_context):
 def test_groq_config_and_env_resolution(monkeypatch):
     """Groq provider and model configure correctly via arguments or environment variables."""
     monkeypatch.setenv("LLM_PROVIDER", "groq")
-    monkeypatch.setenv("LLM_MODEL", "llama-3.3-70b-versatile")
+    monkeypatch.setenv("LLM_MODEL", "openai/gpt-oss-120b")
     monkeypatch.setenv("GROQ_API_KEY", "gsk-test-key-12345")
 
     config = LLMConfig()
     assert config.provider == "groq"
-    assert config.model == "llama-3.3-70b-versatile"
+    assert config.model == "openai/gpt-oss-120b"
+    assert config.api_key == "gsk-test-key-12345"
+
+
+def test_groq_default_model_resolution(monkeypatch):
+    """Groq provider defaults to openai/gpt-oss-120b when LLM_MODEL is unset."""
+    monkeypatch.setenv("LLM_PROVIDER", "groq")
+    monkeypatch.delenv("LLM_MODEL", raising=False)
+    monkeypatch.setenv("GROQ_API_KEY", "gsk-test-key-12345")
+
+    config = LLMConfig()
+    assert config.provider == "groq"
+    assert config.model == "openai/gpt-oss-120b"
     assert config.api_key == "gsk-test-key-12345"
 
 
@@ -1050,7 +1062,7 @@ def test_groq_missing_api_key_raises_error(monkeypatch):
     monkeypatch.delenv("GROQ_API_KEY", raising=False)
     monkeypatch.delenv("LLM_API_KEY", raising=False)
     with pytest.raises(LLMConfigurationError, match="API key missing for provider 'groq'"):
-        LLMConfig(provider="groq", model="llama-3.3-70b-versatile", api_key="")
+        LLMConfig(provider="groq", model="openai/gpt-oss-120b", api_key="")
 
 
 def test_groq_request_dispatch_and_normalization(sample_case_context):
@@ -1064,7 +1076,7 @@ def test_groq_request_dispatch_and_normalization(sample_case_context):
         assert request.headers["content-type"] == "application/json"
 
         body = json.loads(request.content)
-        assert body["model"] == "llama-3.3-70b-versatile"
+        assert body["model"] == "openai/gpt-oss-120b"
         assert body["temperature"] == 0.0
         assert body["response_format"] == {"type": "json_object"}
         assert len(body["messages"]) >= 2
@@ -1076,7 +1088,7 @@ def test_groq_request_dispatch_and_normalization(sample_case_context):
             json={
                 "id": "chatcmpl-groq-123",
                 "object": "chat.completion",
-                "model": "llama-3.3-70b-versatile",
+                "model": "openai/gpt-oss-120b",
                 "choices": [
                     {
                         "message": {
@@ -1097,7 +1109,7 @@ def test_groq_request_dispatch_and_normalization(sample_case_context):
     http_client = httpx.Client(transport=transport)
     config = LLMConfig(
         provider="groq",
-        model="llama-3.3-70b-versatile",
+        model="openai/gpt-oss-120b",
         api_key="gsk-groq-test",
     )
 
@@ -1108,7 +1120,7 @@ def test_groq_request_dispatch_and_normalization(sample_case_context):
     assert result.status == "success"
     assert result.error is None
     assert result.provider == "groq"
-    assert result.model == "llama-3.3-70b-versatile"
+    assert result.model == "openai/gpt-oss-120b"
     assert len(result.suggestions) == 1
     assert result.usage == {
         "prompt_tokens": 150,
@@ -1124,7 +1136,7 @@ def test_groq_rate_limit_error_handling(sample_case_context):
 
     transport = httpx.MockTransport(mock_handler)
     http_client = httpx.Client(transport=transport)
-    config = LLMConfig(provider="groq", model="llama-3.3-70b-versatile", api_key="gsk-groq-test")
+    config = LLMConfig(provider="groq", model="openai/gpt-oss-120b", api_key="gsk-groq-test")
 
     with LLMClient(config=config, http_client=http_client) as client:
         with pytest.raises(LLMRateLimitError) as exc_info:
