@@ -12,15 +12,19 @@ import pytest
 
 from evaluate import (
     ACCEPTANCE_TARGETS,
+    ACTIVE_CHECKPOINT_FILE,
     EvaluationLLMClient,
+    compute_fixture_fingerprint,
     discover_fixtures,
     evaluate_all,
     evaluate_case,
     format_aggregate_table,
     format_per_case_table,
+    load_checkpoint,
     main,
     match_tier_a,
     match_tier_b,
+    save_checkpoint,
 )
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "cases"
@@ -537,4 +541,104 @@ def test_no_false_pass_when_required_metric_is_na():
     assert eval_data["targets"]["hallucination_rate"]["status"] == "PASS"
     assert eval_data["targets"]["clean_cases_fp"]["status"] == "PASS"
     assert eval_data["passed"] is False
+
+
+# --- 20: Checkpointing Tests ---
+
+def test_checkpoint_atomic_saving_and_loading(tmp_path):
+    """Verify atomic checkpoint save and load preserves all fields."""
+    cp_path = tmp_path / "checkpoints" / "test_cp.json"
+    data = {
+        "version": 1,
+        "config_metadata": {"provider": "groq", "model": "openai/gpt-oss-120b"},
+        "completed_fixtures": {"C0": {"status": "ok"}},
+        "in_progress_categories": {},
+    }
+    save_checkpoint(data, path=cp_path)
+    assert cp_path.is_file()
+    # Temporary file should be replaced
+    assert not cp_path.with_suffix(".tmp").exists()
+
+    loaded = load_checkpoint(cp_path)
+    assert loaded is not None
+    assert loaded["version"] == 1
+    assert loaded["completed_fixtures"]["C0"]["status"] == "ok"
+    assert "updated_at" in loaded
+
+
+def test_checkpoint_metadata_mismatch_raises_error(tmp_path, monkeypatch):
+    """Verify resuming checkpoint with mismatched provider/model raises RuntimeError."""
+    cp_path = tmp_path / "checkpoints" / "eval_checkpoint_active.json"
+    monkeypatch.setattr("evaluate.ACTIVE_CHECKPOINT_FILE", cp_path)
+    monkeypatch.setattr("evaluate.CHECKPOINTS_DIR", tmp_path / "checkpoints")
+    fixtures = discover_fixtures(FIXTURES_DIR)
+    fingerprint = compute_fixture_fingerprint(fixtures)
+
+    # Checkpoint created with provider='openai'
+    data = {
+        "version": 1,
+        "config_metadata": {
+            "provider": "openai",
+            "model": "gpt-4o",
+            "mode": "live",
+            "fixture_stems": [s for s, _, _ in fixtures],
+            "fixture_fingerprint": fingerprint,
+        },
+        "completed_fixtures": {},
+        "in_progress_categories": {},
+    }
+    save_checkpoint(data, path=cp_path)
+
+    # Try evaluating with live_config provider='groq'
+    from src.llm import LLMConfig
+    groq_cfg = LLMConfig(provider="groq", model="openai/gpt-oss-120b", api_key="gsk-test")
+
+    with pytest.raises(RuntimeError, match="Checkpoint configuration mismatch"):
+        evaluate_all(
+            cases_dir=FIXTURES_DIR,
+            mode="live",
+            live_config=groq_cfg,
+            use_checkpoint=True,
+        )
+
+
+def test_checkpoint_category_resumption(tmp_path):
+    """Verify evaluate_case reuses completed categories without re-executing them."""
+    c0_case = FIXTURES_DIR / "C0.json"
+    c0_expected = FIXTURES_DIR / "C0.expected.json"
+
+    # Pre-record category result in checkpoint
+    in_prog = {
+        "contextual_contradiction": {
+            "tier_b_suggestions": [
+                {
+                    "type": "contextual_contradiction",
+                    "severity": "medium",
+                    "summary": "Cached finding.",
+                    "evidence_refs": ["notes.N3", "photos.P1.d4"],
+                }
+            ],
+            "rejected_suggestions": [],
+            "stats": {"received": 1, "rejected": 0, "drop_reasons": {}},
+            "tokens": {"prompt_tokens": 50, "completion_tokens": 20, "total_tokens": 70},
+            "inv_latency": 120.0,
+            "tier_a_flags": [{"rule": "A1", "evidence_refs": ["photos.P1.d3"]}],
+        }
+    }
+
+    client = EvaluationLLMClient(mode="dry_run")
+    result = evaluate_case(
+        "C0",
+        c0_case,
+        c0_expected,
+        client,
+        in_progress_categories=in_prog,
+    )
+
+    # Assert category results were loaded from cache
+    assert result["rejections"]["received"] == 1
+    assert result["tokens"]["total_tokens"] == 70
+    assert result["diagnostic_provider_latencies_ms"] == [120.0]
+    assert result["tier_b"]["tp"] == 1
+
 

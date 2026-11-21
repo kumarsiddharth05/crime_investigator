@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import json
 import os
+import re
+import threading
 import time
 from typing import Any, NoReturn
 
@@ -217,6 +219,102 @@ class MessageBundle:
 
 
 PromptPayload = PromptBundle | MessageBundle
+
+
+# --- Groq Pacing & Rate Limiting ---
+
+class GroqRateLimiter:
+    """Thread-safe rate limiter for Groq API calls to prevent 8,000 TPM limit exhaustion."""
+
+    def __init__(self, default_interval: float = 20.0) -> None:
+        self._lock = threading.Lock()
+        self._default_interval = default_interval
+        self._last_call_time = 0.0
+        self._next_allowed_time = 0.0
+        self._total_wait_time = 0.0
+
+    @property
+    def cooldown_seconds(self) -> float:
+        env_val = os.environ.get("GROQ_COOLDOWN_SECONDS")
+        if env_val is not None:
+            try:
+                return max(0.0, float(env_val))
+            except ValueError:
+                pass
+        return self._default_interval
+
+    @property
+    def total_wait_time(self) -> float:
+        with self._lock:
+            return self._total_wait_time
+
+    def acquire(self) -> float:
+        """Wait until cooldown has elapsed before releasing caller to send next request."""
+        with self._lock:
+            cooldown = self.cooldown_seconds
+            now = time.perf_counter()
+            wait_time = max(0.0, self._next_allowed_time - now, (self._last_call_time + cooldown) - now)
+            if wait_time > 0.0:
+                time.sleep(wait_time)
+                self._total_wait_time += wait_time
+            actual_call_time = time.perf_counter()
+            self._last_call_time = actual_call_time
+            self._next_allowed_time = actual_call_time + cooldown
+            return wait_time
+
+    def update_from_response(self, response: httpx.Response) -> None:
+        """Update cooldown dynamically from Groq rate-limit headers or 429 Retry-After."""
+        with self._lock:
+            # 1. Check HTTP 429 Retry-After or error message
+            if response.status_code == 429:
+                retry_after_str = response.headers.get("retry-after")
+                delay = None
+                if retry_after_str:
+                    try:
+                        delay = float(retry_after_str)
+                    except ValueError:
+                        pass
+                if delay is None:
+                    try:
+                        data = response.json()
+                        msg = data.get("error", {}).get("message", "")
+                        match = re.search(r"try again in ([\d\.]+)s", msg, re.IGNORECASE)
+                        if match:
+                            delay = float(match.group(1))
+                    except Exception:
+                        pass
+                if delay is not None and delay > 0:
+                    self._next_allowed_time = time.perf_counter() + delay + 0.5
+                return
+
+            # 2. Check remaining tokens header: if remaining tokens < 2500, set next allowed time to reset duration
+            rem_tokens_str = response.headers.get("x-ratelimit-remaining-tokens")
+            reset_tokens_str = response.headers.get("x-ratelimit-reset-tokens")
+            if rem_tokens_str and reset_tokens_str:
+                try:
+                    rem_tokens = int(rem_tokens_str)
+                    if rem_tokens < 2500:
+                        reset_s = 0.0
+                        if reset_tokens_str.endswith("ms"):
+                            reset_s = float(reset_tokens_str[:-2]) / 1000.0
+                        elif reset_tokens_str.endswith("s"):
+                            reset_s = float(reset_tokens_str[:-1])
+                        else:
+                            reset_s = float(reset_tokens_str)
+                        if reset_s > 0:
+                            self._next_allowed_time = time.perf_counter() + reset_s + 0.5
+                except (ValueError, TypeError):
+                    pass
+
+    def reset(self) -> None:
+        """Reset state (useful for tests)."""
+        with self._lock:
+            self._last_call_time = 0.0
+            self._next_allowed_time = 0.0
+            self._total_wait_time = 0.0
+
+
+groq_rate_limiter = GroqRateLimiter()
 
 
 class LLMClient:
@@ -450,6 +548,9 @@ class LLMClient:
         except (httpx.TimeoutException, httpx.NetworkError, httpx.ConnectError) as exc:
             raise LLMTransportError(f"{provider_name} transport error: {exc}") from exc
 
+        if provider_name == "groq":
+            groq_rate_limiter.update_from_response(res)
+
         self._handle_http_errors(res, provider_name=provider_name)
 
         try:
@@ -495,6 +596,7 @@ class LLMClient:
     def _call_groq(
         self, bundle: PromptPayload, history: list[tuple[str, str]]
     ) -> tuple[str, dict[str, int], str]:
+        groq_rate_limiter.acquire()
         return self._call_openai_compatible(
             bundle=bundle,
             history=history,
