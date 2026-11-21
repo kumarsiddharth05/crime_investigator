@@ -72,7 +72,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--provider",
         type=str,
         default=None,
-        help="Override LLM provider (openai, gemini, anthropic)",
+        help="Override LLM provider (groq, openrouter, openai, gemini, anthropic)",
     )
     parser.add_argument(
         "--model",
