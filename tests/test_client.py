@@ -12,7 +12,17 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 import pytest
 import httpx
-from google.genai.errors import APIError
+
+try:
+    from google.genai.errors import APIError
+except ImportError:
+    class APIError(Exception):  # type: ignore[no-redef]
+        """Fallback mock for google.genai.errors.APIError when google-genai is not installed."""
+
+        def __init__(self, code: int, message: Any = None) -> None:
+            self.code = code
+            self.status_code = code
+            super().__init__(f"HTTP {code}: {message}")
 
 from src.llm import (
     DEFAULT_TEMPERATURE,
@@ -670,6 +680,7 @@ def test_503_fails_fast_no_retry(sample_case_context):
 
 def test_client_constructor_retry_options():
     """Verify genai.Client constructor is called with attempts=1 retry configuration."""
+    pytest.importorskip("google.genai")
     with patch("google.genai.Client") as mock_client_cls:
         mock_instance = MagicMock()
         mock_instance.interactions.create.return_value = MockGeminiInteraction(
@@ -731,6 +742,7 @@ def test_client_create_call_passes_timeout_and_no_continuation():
 
 def test_http_options_timeout_is_milliseconds():
     """Verify genai.Client http_options timeout is passed in milliseconds (20000)."""
+    pytest.importorskip("google.genai")
     with patch("google.genai.Client") as mock_client_cls:
         mock_instance = MagicMock()
         mock_instance.interactions.create.return_value = MockGeminiInteraction(

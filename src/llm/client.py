@@ -551,16 +551,16 @@ class LLMClient:
     def _call_gemini(
         self, bundle: PromptPayload, history: list[tuple[str, str]]
     ) -> tuple[str, dict[str, int], str]:
-        try:
-            from google import genai
-        except ImportError as exc:
-            raise LLMConfigurationError(
-                "The 'google-genai' package is required for Gemini provider. "
-                "Install it via 'pip install google-genai'."
-            ) from exc
-
         client = self._genai_client
         if client is None:
+            try:
+                from google import genai
+            except ImportError as exc:
+                raise LLMConfigurationError(
+                    "The 'google-genai' package is required for Gemini provider. "
+                    "Install it via 'pip install google-genai'."
+                ) from exc
+
             client = genai.Client(
                 api_key=self.config.api_key,
                 http_options={
