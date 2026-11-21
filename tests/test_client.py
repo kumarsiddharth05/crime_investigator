@@ -1084,6 +1084,8 @@ def test_groq_request_dispatch_and_normalization(sample_case_context, monkeypatc
     """Groq call dispatches to Groq chat completions endpoint with normalized response."""
     monkeypatch.setenv("GROQ_COOLDOWN_SECONDS", "0.0")
     groq_rate_limiter.reset()
+def test_groq_request_dispatch_and_normalization(sample_case_context):
+    """Groq call dispatches to Groq chat completions endpoint with normalized response."""
     recorded_requests = []
 
     def mock_handler(request: httpx.Request) -> httpx.Response:
@@ -1151,6 +1153,8 @@ def test_groq_rate_limit_error_handling(sample_case_context, monkeypatch):
     monkeypatch.setenv("GROQ_COOLDOWN_SECONDS", "0.0")
     groq_rate_limiter.reset()
 
+def test_groq_rate_limit_error_handling(sample_case_context):
+    """Groq HTTP 429 maps to LLMRateLimitError identifying Groq as provider."""
     def mock_handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(429, text="Rate limit reached for Groq organization")
 

@@ -5,7 +5,7 @@
 **Date of Freeze:** 21 November 2026  
 **Status:** **FROZEN & VERIFIED**  
 **Freeze Readiness Verdict:** **PASS**  
-**Authoritative Project Records:** `README.md`, `full _roadmap.md`, `PROJECT_BRIEF.md`, `PLAN.md`  
+**Authoritative Repositories & Guides:** `Coordinator_Handbook.md`, `PLAN.md`  
 
 ---
 
@@ -128,7 +128,7 @@ All cross-source links resolve using dotted string paths:
 - `photos.P#.d#`: Navigates to photo with `ref == "photos.P#"`, then detection with `ref == "photos.P#.d#"`.
 - `evidence.E#`: Direct lookup in `case_context["evidence"]`.
 - `timeline.T#`: Direct lookup in `case_context["timeline"]`.
-- `map.E#`: Direct lookup in `case_context["map"]["xy_optional"]` (or `map["reference_points"]`). *(Verified against `src/analysis/refs.py` and case fixtures).*
+- `map.E#`: Direct lookup in `case_context["map"]` evidence coordinates.
 
 ---
 
@@ -256,10 +256,8 @@ Appended to `runs/workflow_history/reviews/<analysis_id>.jsonl`:
   - Network timeouts, connection drops, HTTP 429, and HTTP 5xx raise immediate non-retryable exceptions (`LLMTransportError`, `LLMRateLimitError`).
   - `max_attempts` (up to 2 retries) applies **strictly** to HTTP 200 OK responses with invalid JSON or schema parse failures.
 
-### 4.4 Dormant Maintenance Procedure: Step-by-Step Model Replacement
-*(Dormant Maintenance Procedure — Not an active recommendation. Module 1 is frozen on Groq `openai/gpt-oss-120b`. This procedure is documented strictly for future operational maintenance if the active model is deprecated).*
-
-To replace or upgrade the LLM provider/model if required in future operations:
+### 4.4 Step-by-Step Model Replacement Procedure
+To replace or upgrade the LLM provider/model:
 1. Update `.env` (e.g., `LLM_PROVIDER=groq`, `LLM_MODEL=<new-model>`).
 2. Run offline test suite:
    ```powershell

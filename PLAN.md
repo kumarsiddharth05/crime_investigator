@@ -3,13 +3,11 @@
 
 **Repository:** `kumarsiddharth05/crime_investigator`  
 **Production LLM:** Groq — `openai/gpt-oss-120b`  
-**Current Stage:** **Module 1 (LLM Analysis Module) FROZEN; Module 2 (YOLO Detection & Evidence Management) ACTIVE — Stages Y1, Y2 & Y3 COMPLETE; Stage Y4 next.**  
-**4-Document Architecture Authority Hierarchy:**
-1. `README.md` — Permanent entry point, system overview, project status, core principles.
-2. `full _roadmap.md` — Master project roadmap, sequence, cross-module criteria.
-3. `PROJECT_BRIEF.md` — Authoritative active-module engineering specification (currently Module 2).
-4. `PLAN.md` — Reconciled operational record, active roadmap, and decision/implementation ledger.
-*(Permanent Handover Documents: `docs/*_HANDOVER.md` record frozen contracts for completed modules).*
+**Current Stage:** **Module 1 (LLM Analysis Module) FROZEN; Prompt 14 (Investigator Interaction Workflow Prototype) COMPLETE; next active task is Module 2 — YOLO Detection Module.**  
+**Authority Hierarchy:**
+1. `Coordinator_Handbook.md` — Authoritative for project objectives, approved architecture, requirements, locked decisions, constraints, and decision history.
+2. `Executer_Handbook.md` — Historical codebase scan snapshot (note: local unstaged draft contained inaccurate §4.1 Tier A descriptions; `PLAN.md` and source code are authoritative).
+3. `PLAN.md` — Reconciled operational record, active roadmap, and decision/implementation ledger.
 
 ---
 
@@ -95,8 +93,7 @@
 | Evaluation Harness & Checkpointing | `evaluate.py`, `tests/test_evaluate.py` | **Complete (Frozen)** | Completed 13-fixture live run + 28 unit tests. |
 | CLI Entry Point | `analyze.py` | **Complete (Frozen)** | `--provider` help updated to include `groq`, `openrouter`. |
 | Prompt 14 — Investigator Interaction Workflow Prototype | `src/workflow/`, `investigator_cli.py`, `tests/test_workflow.py` | **Complete** | 17/17 mocked workflow tests, 163/163 pytest suite, 0 Pyrefly errors, and 1 controlled live Groq workflow test (C2 spatial_inconsistency) passed on 21 Nov 2026. |
-| Module 2 — YOLO Candidate Detection & Evidence Management | `src/yolo/`, `tests/test_yolo.py`, `docs/YOLO_MODULE_HANDOVER.md` | **Active (Stages Y1–Y3 Complete)** | Stages Y1, Y2, Y3 verified (29/29 unit tests, 192/192 full pytest, 0 Pyrefly errors); Stage Y4 next. |
-| Modules 3–8 (Spatial, Timeline, Case Context, Reports, Menu UI) | Not created | **Pending** | Sequential roadmap after Module 2 (see `full _roadmap.md`). |
+| Modules 2–8 (YOLO, OpenCV, Timeline, Case Context, Reports, Final Menu UI) | Not created | **Pending** | Sequential roadmap after Prompt 14. |
 
 ---
 
@@ -109,9 +106,6 @@
 5. **Baseline Audit & Module 1 Freeze:** Verified `CI` green on `origin/main` (`9c20fa94904b`), inspected `client.py`, `evaluate.py`, `prompt_builder.py`, and `analyze.py`, fixed `analyze.py` provider help text, and established `PLAN.md`.
 6. **Prompt 14 — Investigator Interaction Workflow Prototype (21 Nov 2026):** Implemented request/response envelope (`schema_version="1.0"`), 4 result presentation states, deterministic Python-only available actions, prototype separate immutable analysis & append-only review persistence under `runs/workflow_history/`, 1-category-per-invocation adapter wrapping frozen pipeline, and 9-option interactive CLI. Verified with 17/17 offline mocked tests, full 163-test pytest suite, 0 Pyrefly errors, and 1 controlled live Groq integration test on `cases/C2.json` (`spatial_inconsistency`, 1 HTTP request).
 7. **Prompt 15 — Final LLM Analysis Module Freeze & Handover (21 Nov 2026):** Generated standalone final module handover document (`docs/LLM_MODULE_HANDOVER.md`) detailing the 14 architecture components, module boundaries, exact input/output and workflow interaction envelope schemas, Groq configuration and model replacement procedure, analysis semantics (A1–A8, 3 Tier B categories, 7-check validator), evaluation reproducibility, offline test verification, known limitations, operational commands, upstream module integration requirements, and explicit Freeze Readiness: PASS verdict.
-8. **Module 2 Stage Y0 Pre-Design Inspection & Closure (22 Nov 2026):** Completed strictly read-only pre-design audit of repository contracts, Python 3.14 CPU environment, and active documentation. Adopted 4-document governance model; closed 6 Y0 corrections (locked Y1–Y8 sequence, corrected Tier A Rule A3 semantics, provisional yolov8n.pt CPU strategy with unverified Python 3.14 vision compatibility, 3-layer evidence representation, documentation alignment, and verified map.E# resolution). Ready for Stage Y1.
-9. **Module 2 Stages Y1 & Y2 — Core Entities, Storage, Audit & Detector Backend (22 Nov 2026):** Implemented the 5 core domain entities (`PhotoRecord`, `DetectionRun`, `DetectionCandidate`, `EvidenceRecord`, `ReviewEvent`, `EvidenceEvent`), atomic file storage & SHA-256 integrity verification (`src/yolo/store.py`), monotonic photo-scoped ID counters, append-only JSONL audit logging, `DetectorBackend` protocol, deterministic `StubDetectorBackend`, and lazy-loaded `UltralyticsYOLOBackend` (`src/yolo/detector.py`). Verified with 24/24 unit tests in `tests/test_yolo.py`, 187/187 full pytest suite, 13/13 fixtures and refs, and 0 Pyrefly errors.
-10. **Module 2 Stage Y3 — EXIF Orientation, Letterbox Transforms & Separate Preview Rendering (22 Nov 2026):** Implemented pure-stdlib JPEG EXIF orientation extraction (II and MM byte orders for IFD0 tag 0x0112), dimension swapping (for orientations 5, 6, 7, 8), aspect-preserving letterbox scale and padding computation (`ImagePrepMetadata`), reversible letterbox coordinate mapping with boundary clipping and zero-area validation (`reverse_letterbox_bbox`), and separate annotated preview generation (`render_annotated_preview`) with strict immutability guards (`output_path != original_path`, verified SHA-256 preservation), 0-detection handling, color-coded yellow/green/grey candidate outlines, pure stdlib PNG fallback, and optional Pillow integration. Verified with 29/29 unit tests in `tests/test_yolo.py`, 192/192 full pytest suite, 13/13 fixtures and refs, and 0 Pyrefly errors. Ready for Stage Y4.
 
 ---
 
@@ -141,11 +135,10 @@
 
 - **GitHub Actions `CI` on `origin/main` (`9c20fa94904b`):** **CONFIRMED GREEN (`success`)** (`2026-11-21T14:03:29Z`).
 - **Offline Verification Suite (Python 3.14):**
-  - `pytest tests/test_yolo.py -v`: **29 passed, 1 warning** (exit `0`).
-  - `pytest -q`: **192 passed, 1 warning** (exit `0`).
+  - `pytest -q`: **163 passed, 1 warning** (exit `0`).
   - `python scripts/check_fixtures.py`: **13/13 fixtures valid** (exit `0`).
   - `python scripts/check_refs.py`: **13/13 refs resolved** (exit `0`).
-  - `pyrefly check src/ tests/`: **0 errors** (6 suppressed, 4 warnings not shown; exit `0`).
+  - `pyrefly check src/ tests/`: **0 errors** (1 suppressed, 3 warnings not shown; exit `0`).
 - **Controlled Live Groq Workflow Test (21 Nov 2026):** Exactly 1 live Groq HTTP request on `cases/C2.json` (`spatial_inconsistency`), returning `status="completed"`, `result_state="findings_returned"` (1 validated suggestion `S001` citing `notes.N1` and `evidence.E1`), reference resolution confirmed via `refs.py`, investigator review logged, and original model findings verified unmutated.
 - **Git Control:** Managed exclusively by project owner; coordinator/executor never run unapproved Git mutations.
 
@@ -153,9 +146,8 @@
 
 ## 10. Roadmap
 
-- **Completed & Frozen / Verified:** Module 1 — LLM Analysis Module (Tier A, Semantic Gates, Tier B, Validator, Groq Client, Evaluation Harness, CLI); Prompt 14 — Investigator Interaction Workflow Prototype; Prompt 15 — Final LLM Analysis Module Freeze & Handover (`docs/LLM_MODULE_HANDOVER.md`).
-- **Active Module:** **Module 2 — YOLO Candidate Detection, Investigator Review & Evidence Management** (Stages Y0, Y1, Y2, Y3 complete; see `PROJECT_BRIEF.md` for complete active engineering specification).
-- **Immediate Next Task:** **Module 2 — Stage Y4: Multi-Photo Ingestion Pipeline & Exif Batch Ingestion** (implementing multi-photo ingestion orchestrator, metadata extraction, and case batch management).
+- **Completed & Frozen / Verified:** Module 1 — LLM Analysis Module (Tier A, Semantic Gates, Tier B, Validator, Groq Client, Evaluation Harness, CLI); Prompt 14 — Investigator Interaction Workflow Prototype (`src/workflow/`, `investigator_cli.py`, `tests/test_workflow.py`).
+- **Immediate Next Task:** **Module 2 — YOLO Detection Module** (candidate detection workflow, immutable original photos, separate annotated previews, detection metadata, investigator confirm/dismiss-with-reason, manual evidence creation).
 - **Subsequent Modules:** Module 2 (YOLO Candidate Detection) → Module 3 (OpenCV 4-Point Planar Mapping) → Module 4 (Timeline Construction) → Module 5 (SQLite Case Context Builder + token budgeting) → Module 6 (ReportLab Report Generation) → Incremental & End-to-End Integration → Module 8 (Final Menu-Based UI).
 - **Deferred:** SIFT/ORB, `findHomography`+RANSAC, image stitching, COLMAP, live verification of backup LLM providers.
 - **Excluded:** Chatbot UI, custom YOLO training, autonomous guilt/forensic conclusions, `A9`, `C8`, `C9`, `llm context.txt`, removed Tier B categories.
@@ -211,33 +203,3 @@
 - **Files Affected:** `docs/LLM_MODULE_HANDOVER.md`, `PLAN.md`.
 - **Verification:** 163/163 pytest passing (exit 0), 17/17 workflow mocked tests passing (exit 0), 13/13 fixtures and refs passing (exit 0), 0 Pyrefly errors (exit 0).
 - **Remaining Issues:** None; Module 1 is permanently frozen. Next active milestone is Module 2 (YOLO Detection Module).
-
-### Entry 5 — Module 2 Stage Y0 Closure & 4-Document Architecture Alignment
-- **Problem:** Beginning Module 2 (YOLO) implementation without auditing active contracts risks schema drift, false assumptions regarding Tier A rules (such as Rule A3 checking evidence labels vs photo/det refs), unverified Python 3.14 library compatibility, and confusion from obsolete handbook references.
-- **Reason:** Ensuring strict contract adherence, confirming CPU-only hardware reality (Windows 10, 4 cores, no CUDA), and establishing the clean 4-document architecture before generating a single line of Module 2 code.
-- **Approved Solution:** Executed strictly read-only Stage Y0 inspection; retired obsolete handbooks; adopted 4-document governance (`README.md`, `full _roadmap.md`, `PROJECT_BRIEF.md`, `PLAN.md`, plus `docs/*_HANDOVER.md`); confirmed the 6 Y0 corrections:
-  1. *Locked Y1–Y8 sequence:* Approved sequential implementation roadmap Y1 through Y8.
-  2. *Corrected A3 rule logic:* Confirmed `src/analysis/tier_a.py` checks note keywords against all detection classes (any disposition) and confirmed evidence labels (does not require populated `photo_ref`/`det_ref`).
-  3. *Provisional model strategy:* Adopted `DetectorBackend` protocol + `StubDetectorBackend` + lazy `UltralyticsYOLOBackend`; noted `yolov8n.pt` strictly as provisional CPU candidate with Python 3.14 compatibility explicitly unverified.
-  4. *3-layer evidence representation:* Preserved internal multi-photo lists, standard schema primary refs, and schema-permitted extended fields (`additionalProperties: true`).
-  5. *Documentation alignment:* Aligned active documentation, eliminated obsolete handbook references, and established `PROJECT_BRIEF.md` as the dedicated Module 2 active specification.
-  6. *Verified `map.E#`:* Confirmed `map.E#` resolves accurately against `case_context["map"]["xy_optional"]` via `src/analysis/refs.py`.
-- **Files Affected:** `README.md`, `PROJECT_BRIEF.md`, `PLAN.md`, `docs/LLM_MODULE_HANDOVER.md`.
-- **Verification:** Read-only inspection verified: Python 3.14.0 CPU-only environment; 163 pytest passing, 13/13 fixtures and refs passing; zero code churn.
-- **Remaining Issues:** Stage Y0 closed. Stage Y1 (Core Domain Entities & Storage Layout) is the immediate active task.
-
-### Entry 6 — Module 2 Stages Y1 & Y2 Core Contracts, Storage & Detector Backend
-- **Problem:** Module 2 required typed domain contracts, SHA-256 tamper-evident photo storage, atomic persistence, photo-scoped monotonic ID generation, append-only review/evidence auditing, and a decoupled detector backend protocol before introducing computer vision or model weights.
-- **Reason:** Establishing pure-standard-library data storage and abstract detector protocol prevents tight coupling to optional ML dependencies (such as `ultralytics`), guarantees process-restart safety, preserves offline CI testing, and ensures forensic immutability.
-- **Approved Solution:** Implemented `src/yolo/exceptions.py` (structured error hierarchy), `src/yolo/models.py` (5 core entities + audit events with strict validation and dict serialization), `src/yolo/store.py` (`YoloCaseStore` with atomic JSON writes, SHA-256 duplication checks, original photo preservation, photo-scoped `photos.P#.d#` counters, and append-only JSONL logs), `src/yolo/detector.py` (`DetectorConfig`, `RawPrediction`, `ModelProvenance`, `DetectorOutput`, `DetectorBackend` protocol, deterministic `StubDetectorBackend`, and lazy-loaded `UltralyticsYOLOBackend`), and `src/yolo/__init__.py`.
-- **Files Affected:** `src/yolo/__init__.py`, `src/yolo/exceptions.py`, `src/yolo/models.py`, `src/yolo/store.py`, `src/yolo/detector.py`, `tests/test_yolo.py`, `PLAN.md`.
-- **Verification:** 24/24 unit tests in `tests/test_yolo.py`, 187/187 full pytest suite (exit 0), 13/13 case fixtures and refs (exit 0), and 0 Pyrefly type errors across `src/` and `tests/`.
-- **Remaining Issues:** None; unblocks Stage Y3 (Ingestion Pipeline & Exif Orientation Correction).
-
-### Entry 7 — Module 2 Stage Y3 EXIF Orientation, Letterbox Transforms & Separate Previews
-- **Problem:** Camera EXIF rotation tags (especially orientations 6 and 8 from mobile/field cameras) invert display aspect ratios, causing letterbox inference coordinates to misalign with original pixel space if uncorrected. Furthermore, generating visual overlays directly onto original photos violates forensic immutability.
-- **Reason:** Standard library parsing of TIFF headers in APP1 segments ensures zero external dependencies while accurately determining display dimensions. Letterbox coordinate inversion maps model predictions back to original coordinates, while strict output path collision checks and SHA-256 assertions guarantee the original crime scene photo is never mutated.
-- **Approved Solution:** Implemented `src/yolo/preview.py` with `read_exif_orientation` (parsing APP1 Exif TIFF structures in both little-endian II and big-endian MM), `compute_letterbox_metadata` (computing scale and centered letterbox padding), `reverse_letterbox_bbox` (reversing letterboxing and clipping with `DetectorError` validation), and `render_annotated_preview` (atomic rendering with immutable original verification, stdlib PNG fallback with yellow/green/grey color coding, and optional Pillow support). Integrated EXIF extraction into `YoloCaseStore.ingest_photo` to record `PhotoRecord.exif_orientation` without altering original bytes.
-- **Files Affected:** `src/yolo/preview.py`, `src/yolo/store.py`, `src/yolo/__init__.py`, `tests/test_yolo.py`, `PLAN.md`.
-- **Verification:** 29/29 unit tests in `tests/test_yolo.py`, 192/192 full pytest suite (exit 0), 13/13 case fixtures and refs (exit 0), and 0 Pyrefly type errors across `src/` and `tests/`.
-- **Remaining Issues:** None; unblocks Stage Y4.
