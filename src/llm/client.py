@@ -2,8 +2,9 @@
 
 Provides a unified interface to OpenAI, Gemini, and Anthropic with:
 - Fixed temperature 0.0 and timeout 20.0 seconds
-- Explicit model configuration (no stale defaults)
+- Explicit model configuration (no stale defaults, defaulting to gemini-3.8-flash for Gemini)
 - Structured JSON output mode across providers
+- Interactions API integration for Gemini 3.8
 - Controlled retries (up to 2 retries, 3 total attempts) for schema/parsing errors
 - Normalized response container distinguishing genuine empty results from schema failures
 - Consistent token usage, latency, model identity, and raw response normalization
@@ -21,7 +22,7 @@ import httpx
 
 from src.llm.prompt_builder import PromptBundle, build_prompt
 
-SUPPORTED_PROVIDERS: frozenset[str] = frozenset({"openai", "gemini", "anthropic"})
+SUPPORTED_PROVIDERS: frozenset[str] = frozenset({"openai", "gemini", "anthropic", "openrouter", "groq"})
 REQUIRED_SUGGESTION_KEYS: frozenset[str] = frozenset({
     "type",
     "severity",
@@ -71,7 +72,12 @@ class LLMConfig:
         temperature: float = DEFAULT_TEMPERATURE,
     ) -> None:
         self.provider = (provider or os.environ.get("LLM_PROVIDER", "")).strip().lower()
-        self.model = (model or os.environ.get("LLM_MODEL", "")).strip()
+        resolved_model = (model or os.environ.get("LLM_MODEL", "")).strip()
+        if not resolved_model and self.provider == "gemini":
+            resolved_model = "gemini-3.8-flash"
+        elif not resolved_model and self.provider == "groq":
+            resolved_model = "llama-3.3-70b-versatile"
+        self.model = resolved_model
         self.timeout = float(timeout)
         self.temperature = float(temperature)
 
@@ -96,10 +102,14 @@ class LLMConfig:
                 "openai": "OPENAI_API_KEY",
                 "gemini": "GEMINI_API_KEY",
                 "anthropic": "ANTHROPIC_API_KEY",
+                "openrouter": "OPENROUTER_API_KEY",
+                "groq": "GROQ_API_KEY",
             }
             env_var = env_var_map.get(self.provider)
             if env_var:
                 resolved_key = os.environ.get(env_var)
+            if not resolved_key and self.provider == "groq":
+                resolved_key = os.environ.get("LLM_API_KEY")
 
         if not resolved_key or not resolved_key.strip():
             raise LLMConfigurationError(
@@ -112,7 +122,7 @@ class LLMConfig:
 # --- Normalized Response Container ---
 
 class LLMResponse(dict):
-    """Normalized response dictionary returned by LLMClient.analyze_case.
+    """Normalized response dictionary returned by LLMClient.analyze_case and call_llm.
 
     Explicitly differentiates between a successful analysis (including genuine empty suggestions)
     and a terminal schema failure.
@@ -160,11 +170,20 @@ class LLMResponse(dict):
 def validate_response_shape(raw_text: str) -> tuple[dict[str, Any] | None, str | None]:
     """Validate JSON parsing and basic suggestion container shape.
 
-    Does not duplicate the 7 downstream validator checks; verifies only
+    Does not duplicate downstream validator checks; verifies only
     envelope integrity and required field presence.
     """
+    cleaned = raw_text.strip()
+    if cleaned.startswith("```"):
+        lines = cleaned.splitlines()
+        if lines and lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        cleaned = "\n".join(lines).strip()
+
     try:
-        data = json.loads(raw_text)
+        data = json.loads(cleaned)
     except Exception as exc:
         return None, f"JSON parse failure: {exc}"
 
@@ -188,6 +207,14 @@ def validate_response_shape(raw_text: str) -> tuple[dict[str, Any] | None, str |
 
 # --- Provider Adapters & Client ---
 
+class MessageBundle:
+    """Lightweight prompt container exposing system_prompt and user_prompt."""
+
+    def __init__(self, system_prompt: str, user_prompt: str) -> None:
+        self.system_prompt = system_prompt
+        self.user_prompt = user_prompt
+
+
 class LLMClient:
     """Provider-agnostic LLM client with isolated adapters, normalization, and controlled retries."""
 
@@ -195,12 +222,14 @@ class LLMClient:
         self,
         config: LLMConfig | None = None,
         http_client: httpx.Client | None = None,
+        genai_client: Any | None = None,
     ) -> None:
         self.config = config or LLMConfig()
         self._http_client = http_client or httpx.Client(timeout=self.config.timeout)
+        self._genai_client = genai_client
 
     def close(self) -> None:
-        """Close the underlying HTTP client."""
+        """Close underlying clients."""
         self._http_client.close()
 
     def __enter__(self) -> LLMClient:
@@ -209,29 +238,71 @@ class LLMClient:
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.close()
 
-    def analyze_case(
+    def call_llm(
         self,
-        case_context: dict[str, Any],
-        assigned_analysis_type: str,
+        messages: list[dict[str, Any]],
+        *,
+        dry_run: bool = False,
+        max_attempts: int = 3,
     ) -> LLMResponse:
-        """Execute one analysis invocation with controlled retries on schema failure.
+        """Execute LLM call given a list of messages with controlled retries on schema failure."""
+        if isinstance(max_attempts, bool) or not isinstance(max_attempts, int) or max_attempts <= 0:
+            raise LLMConfigurationError(
+                f"max_attempts must be a positive integer, got {max_attempts!r}"
+            )
 
-        Returns:
-            LLMResponse containing normalized fields:
-            - suggestions: list[dict]
-            - status: "success" | "schema_fail"
-            - error: None | "schema_fail"
-            - raw_response: str
-            - provider: str
-            - model: str
-            - attempts: int
-            - latency_ms: float
-            - usage: {"prompt_tokens": int, "completion_tokens": int, "total_tokens": int}
-        """
-        bundle = build_prompt(case_context, assigned_analysis_type)
+        if dry_run:
+            return LLMResponse({
+                "suggestions": [],
+                "status": "success",
+                "error": None,
+                "raw_response": '{"suggestions": []}',
+                "provider": self.config.provider,
+                "model": self.config.model,
+                "attempts": 1,
+                "latency_ms": 0.0,
+                "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+            })
 
-        history: list[tuple[str, str]] = []  # list of (assistant_raw, user_correction)
-        max_attempts = 3
+        system_parts: list[str] = []
+        chat_turns: list[dict[str, str]] = []
+
+        for msg in messages:
+            role = str(msg.get("role", "user")).lower()
+            content = str(msg.get("content", msg.get("text", "")))
+            if role == "system":
+                system_parts.append(content)
+            else:
+                chat_turns.append({"role": role, "content": content})
+
+        system_prompt = "\n\n".join(system_parts)
+        if chat_turns and chat_turns[0]["role"] == "user":
+            user_prompt = chat_turns[0]["content"]
+            subsequent_turns = chat_turns[1:]
+        elif chat_turns:
+            user_prompt = chat_turns[0]["content"]
+            subsequent_turns = chat_turns[1:]
+        else:
+            user_prompt = ""
+            subsequent_turns = []
+
+        history: list[tuple[str, str]] = []
+        i = 0
+        while i < len(subsequent_turns):
+            if subsequent_turns[i]["role"] in ("assistant", "model"):
+                asst = subsequent_turns[i]["content"]
+                usr = subsequent_turns[i + 1]["content"] if i + 1 < len(subsequent_turns) else ""
+                history.append((asst, usr))
+                i += 2
+            else:
+                history.append(("", subsequent_turns[i]["content"]))
+                i += 1
+
+        bundle = MessageBundle(
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+        )
+
         start_time = time.perf_counter()
 
         last_raw_text = ""
@@ -283,6 +354,24 @@ class LLMClient:
             "usage": last_usage,
         })
 
+    def analyze_case(
+        self,
+        case_context: dict[str, Any],
+        assigned_analysis_type: str,
+        *,
+        dry_run: bool = False,
+        max_attempts: int = 3,
+    ) -> LLMResponse:
+        """Execute one analysis invocation with controlled retries on schema failure."""
+        if dry_run:
+            return self.call_llm([], dry_run=True, max_attempts=max_attempts)
+        bundle = build_prompt(case_context, assigned_analysis_type)
+        messages = [
+            {"role": "system", "content": bundle.system_prompt},
+            {"role": "user", "content": bundle.user_prompt},
+        ]
+        return self.call_llm(messages, dry_run=False, max_attempts=max_attempts)
+
     def _dispatch_call(
         self,
         bundle: PromptBundle,
@@ -295,34 +384,44 @@ class LLMClient:
         """
         if self.config.provider == "openai":
             return self._call_openai(bundle, history)
+        if self.config.provider == "openrouter":
+            return self._call_openrouter(bundle, history)
+        if self.config.provider == "groq":
+            return self._call_groq(bundle, history)
         if self.config.provider == "gemini":
             return self._call_gemini(bundle, history)
         if self.config.provider == "anthropic":
             return self._call_anthropic(bundle, history)
         raise LLMConfigurationError(f"Unsupported provider: {self.config.provider}")
 
-    def _handle_http_errors(self, response: httpx.Response) -> None:
+    def _handle_http_errors(
+        self, response: httpx.Response, provider_name: str | None = None
+    ) -> None:
         """Map HTTP error status codes to controlled exceptions."""
+        provider = provider_name or self.config.provider
         status = response.status_code
         if status in (401, 403):
             raise LLMAuthenticationError(
-                f"Authentication failed ({status}) for provider '{self.config.provider}': {response.text}"
+                f"Authentication failed ({status}) for provider '{provider}': {response.text}"
             )
         if status == 429:
             raise LLMRateLimitError(
-                f"Rate limit exceeded (429) for provider '{self.config.provider}': {response.text}"
+                f"Rate limit exceeded (429) for provider '{provider}': {response.text}"
             )
         if status >= 400:
             raise LLMTransportError(
-                f"HTTP {status} error from provider '{self.config.provider}': {response.text}"
+                f"HTTP {status} error from provider '{provider}': {response.text}"
             )
 
-    # --- OpenAI Adapter ---
+    # --- Shared OpenAI-Compatible Adapter ---
 
-    def _call_openai(
-        self, bundle: PromptBundle, history: list[tuple[str, str]]
+    def _call_openai_compatible(
+        self,
+        bundle: PromptBundle,
+        history: list[tuple[str, str]],
+        endpoint_url: str,
+        provider_name: str,
     ) -> tuple[str, dict[str, int], str]:
-        url = "https://api.openai.com/v1/chat/completions"
         headers = {
             "Authorization": f"Bearer {self.config.api_key}",
             "Content-Type": "application/json",
@@ -343,11 +442,11 @@ class LLMClient:
         }
 
         try:
-            res = self._http_client.post(url, headers=headers, json=payload)
+            res = self._http_client.post(endpoint_url, headers=headers, json=payload)
         except (httpx.TimeoutException, httpx.NetworkError, httpx.ConnectError) as exc:
-            raise LLMTransportError(f"OpenAI transport error: {exc}") from exc
+            raise LLMTransportError(f"{provider_name} transport error: {exc}") from exc
 
-        self._handle_http_errors(res)
+        self._handle_http_errors(res, provider_name=provider_name)
 
         try:
             body = res.json()
@@ -361,56 +460,155 @@ class LLMClient:
             }
             return raw_text, usage, model_name
         except Exception as exc:
-            raise LLMTransportError(f"Unexpected response structure from OpenAI: {exc}") from exc
+            raise LLMTransportError(f"Unexpected response structure from {provider_name}: {exc}") from exc
 
-    # --- Gemini Adapter ---
+    # --- OpenAI Adapter ---
+
+    def _call_openai(
+        self, bundle: PromptBundle, history: list[tuple[str, str]]
+    ) -> tuple[str, dict[str, int], str]:
+        return self._call_openai_compatible(
+            bundle=bundle,
+            history=history,
+            endpoint_url="https://api.openai.com/v1/chat/completions",
+            provider_name="openai",
+        )
+
+    # --- OpenRouter Adapter ---
+
+    def _call_openrouter(
+        self, bundle: PromptBundle, history: list[tuple[str, str]]
+    ) -> tuple[str, dict[str, int], str]:
+        return self._call_openai_compatible(
+            bundle=bundle,
+            history=history,
+            endpoint_url="https://openrouter.ai/api/v1/chat/completions",
+            provider_name="openrouter",
+        )
+
+    # --- Groq Adapter ---
+
+    def _call_groq(
+        self, bundle: PromptBundle, history: list[tuple[str, str]]
+    ) -> tuple[str, dict[str, int], str]:
+        return self._call_openai_compatible(
+            bundle=bundle,
+            history=history,
+            endpoint_url="https://api.groq.com/openai/v1/chat/completions",
+            provider_name="groq",
+        )
+
+    # --- Gemini Adapter (Google Interactions API) ---
+
+    def _handle_gemini_errors(self, exc: Exception) -> None:
+        """Map Gemini SDK / HTTP errors to controlled exceptions."""
+        code = getattr(exc, "status_code", None)
+        if code is None:
+            code = getattr(exc, "code", None)
+        if code is None:
+            resp = getattr(exc, "response", None)
+            if resp is not None:
+                code = getattr(resp, "status_code", None)
+
+        msg = str(exc).lower()
+
+        if code == 429 or "429" in msg or "resource_exhausted" in msg or "rate limit" in msg or "quota" in msg:
+            raise LLMRateLimitError(
+                f"Rate limit exceeded (429) for provider 'gemini': {exc}"
+            ) from exc
+
+        if code in (401, 403) or "401" in msg or "403" in msg or "unauthenticated" in msg or "permission_denied" in msg or "api_key_invalid" in msg:
+            raise LLMAuthenticationError(
+                f"Authentication failed ({code or 'auth'}) for provider 'gemini': {exc}"
+            ) from exc
+
+        raise LLMTransportError(
+            f"Gemini transport error: {exc}"
+        ) from exc
+
+    @staticmethod
+    def _extract_gemini_usage(usage_obj: Any) -> dict[str, int]:
+        if usage_obj is None:
+            return {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+        if isinstance(usage_obj, dict):
+            prompt = int(usage_obj.get("total_input_tokens", usage_obj.get("prompt_tokens", 0)) or 0)
+            completion = int(usage_obj.get("total_output_tokens", usage_obj.get("completion_tokens", 0)) or 0)
+            total = int(usage_obj.get("total_tokens", prompt + completion) or (prompt + completion))
+        else:
+            prompt = int(getattr(usage_obj, "total_input_tokens", getattr(usage_obj, "prompt_tokens", 0)) or 0)
+            completion = int(getattr(usage_obj, "total_output_tokens", getattr(usage_obj, "completion_tokens", 0)) or 0)
+            total = int(getattr(usage_obj, "total_tokens", prompt + completion) or (prompt + completion))
+        return {
+            "prompt_tokens": prompt,
+            "completion_tokens": completion,
+            "total_tokens": total,
+        }
 
     def _call_gemini(
         self, bundle: PromptBundle, history: list[tuple[str, str]]
     ) -> tuple[str, dict[str, int], str]:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.config.model}:generateContent"
-        headers = {
-            "x-goog-api-key": self.config.api_key,
-            "Content-Type": "application/json",
-        }
-        contents: list[dict[str, Any]] = [
-            {"role": "user", "parts": [{"text": bundle.user_prompt}]}
-        ]
-        for assistant_reply, user_retry in history:
-            contents.append({"role": "model", "parts": [{"text": assistant_reply}]})
-            contents.append({"role": "user", "parts": [{"text": user_retry}]})
+        try:
+            from google import genai
+        except ImportError as exc:
+            raise LLMConfigurationError(
+                "The 'google-genai' package is required for Gemini provider. "
+                "Install it via 'pip install google-genai'."
+            ) from exc
 
-        # Sends system_instruction, contents, temperature 0.0, and responseMimeType
-        payload = {
-            "system_instruction": {"parts": [{"text": bundle.system_prompt}]},
-            "contents": contents,
-            "generationConfig": {
+        client = self._genai_client
+        if client is None:
+            client = genai.Client(
+                api_key=self.config.api_key,
+                http_options={
+                    "api_version": "v1beta",
+                    "timeout": int(self.config.timeout * 1000),
+                    "retry_options": {"attempts": 1},
+                },
+            )
+
+        system_instruction = bundle.system_prompt if bundle.system_prompt else None
+
+        if not history:
+            input_content: Any = bundle.user_prompt
+        else:
+            contents: list[dict[str, Any]] = [
+                {"role": "user", "parts": [{"text": bundle.user_prompt}]}
+            ]
+            for assistant_reply, user_retry in history:
+                contents.append({"role": "model", "parts": [{"text": assistant_reply}]})
+                contents.append({"role": "user", "parts": [{"text": user_retry}]})
+            input_content = contents
+
+        call_kwargs: dict[str, Any] = {
+            "model": self.config.model,
+            "input": input_content,
+            "response_format": {"type": "text", "mime_type": "application/json"},
+            "generation_config": {
                 "temperature": self.config.temperature,
-                "responseMimeType": "application/json",
+                "thinking_level": "low",
             },
+            "timeout": float(self.config.timeout),
+            "automatic_continuation": False,
         }
+        if system_instruction:
+            call_kwargs["system_instruction"] = system_instruction
 
         try:
-            res = self._http_client.post(url, headers=headers, json=payload)
-        except (httpx.TimeoutException, httpx.NetworkError, httpx.ConnectError) as exc:
-            raise LLMTransportError(f"Gemini transport error: {exc}") from exc
-
-        self._handle_http_errors(res)
+            res = client.interactions.create(**call_kwargs)
+        except Exception as exc:
+            self._handle_gemini_errors(exc)
 
         try:
-            body = res.json()
-            raw_text = str(body["candidates"][0]["content"]["parts"][0]["text"])
-            model_name = str(body.get("modelVersion", self.config.model))
-            meta = body.get("usageMetadata", {})
-            prompt_tokens = int(meta.get("promptTokenCount", 0))
-            completion_tokens = int(meta.get("candidatesTokenCount", 0))
-            total_tokens = int(meta.get("totalTokenCount", prompt_tokens + completion_tokens))
-            usage = {
-                "prompt_tokens": prompt_tokens,
-                "completion_tokens": completion_tokens,
-                "total_tokens": total_tokens,
-            }
-            return raw_text, usage, model_name
+            raw_text = getattr(res, "output_text", None)
+            if raw_text is None:
+                if hasattr(res, "output") and res.output is not None:
+                    raw_text = str(res.output)
+                else:
+                    raw_text = ""
+
+            model_name = getattr(res, "model", None) or getattr(res, "model_version", None) or self.config.model
+            usage = self._extract_gemini_usage(getattr(res, "usage", None))
+            return raw_text, usage, str(model_name)
         except Exception as exc:
             raise LLMTransportError(f"Unexpected response structure from Gemini: {exc}") from exc
 
@@ -445,7 +643,7 @@ class LLMClient:
         except (httpx.TimeoutException, httpx.NetworkError, httpx.ConnectError) as exc:
             raise LLMTransportError(f"Anthropic transport error: {exc}") from exc
 
-        self._handle_http_errors(res)
+        self._handle_http_errors(res, provider_name="anthropic")
 
         try:
             body = res.json()
@@ -462,3 +660,40 @@ class LLMClient:
             return raw_text, usage, model_name
         except Exception as exc:
             raise LLMTransportError(f"Unexpected response structure from Anthropic: {exc}") from exc
+
+
+# --- Top-Level Public API ---
+
+def call_llm(
+    messages: list[dict[str, Any]],
+    *,
+    dry_run: bool = False,
+    config: LLMConfig | None = None,
+    max_attempts: int = 3,
+) -> dict[str, Any]:
+    """Top-level entry point for LLM invocation given a list of messages.
+
+    If dry_run is True, returns a normalized empty response without making network calls.
+    """
+    if isinstance(max_attempts, bool) or not isinstance(max_attempts, int) or max_attempts <= 0:
+        raise LLMConfigurationError(
+            f"max_attempts must be a positive integer, got {max_attempts!r}"
+        )
+
+    if dry_run:
+        provider = (config.provider if config else os.environ.get("LLM_PROVIDER", "dry_run")) or "dry_run"
+        model = (config.model if config else os.environ.get("LLM_MODEL", "dry_run")) or "dry_run"
+        return LLMResponse({
+            "suggestions": [],
+            "status": "success",
+            "error": None,
+            "raw_response": '{"suggestions": []}',
+            "provider": provider,
+            "model": model,
+            "attempts": 1,
+            "latency_ms": 0.0,
+            "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+        })
+
+    client = LLMClient(config=config)
+    return client.call_llm(messages, dry_run=False, max_attempts=max_attempts)

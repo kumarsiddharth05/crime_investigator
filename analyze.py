@@ -17,6 +17,10 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
+import dotenv
+
+dotenv.load_dotenv(dotenv_path=Path.cwd() / ".env")
+
 from src.analysis.pipeline import run_pipeline
 from src.llm import LLMConfigurationError, LLMConfig, PERMITTED_TIER_B_TYPES
 
