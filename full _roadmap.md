@@ -503,9 +503,7 @@ The LLM must never generate or control application navigation.
 Implement a menu resembling:
 
 ```
-================================================
        AI-ASSISTED CRIME SCENE ANALYSIS
-================================================
 
 1. Select Case
 2. Run Complete Analysis
