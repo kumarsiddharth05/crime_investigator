@@ -33,7 +33,3 @@ class DetectorError(YoloModuleError):
 
 class DetectorDependencyError(DetectorError):
     """Raised when optional detector backend dependency (e.g. ultralytics) is missing."""
-
-
-class ExportValidationError(YoloModuleError):
-    """Raised when exported case_context fails Draft-07 schema validation."""

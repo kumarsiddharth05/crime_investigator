@@ -1,901 +1,1103 @@
-# MASTER PROJECT ROADMAP
-## AI-Assisted Crime Scene Investigation and Evidence Analysis System
+Yes. Now that the LLM Analysis Module has a defined role in the larger application, I would treat its remaining work as a separate, finite development track. We should not keep adding features indefinitely.
 
-## 1. Roadmap Objective
+The module has two responsibilities to finish:
 
-This document defines the development sequence for the complete AI-Assisted Crime Scene Investigation and Evidence Analysis System.
+1. **Analytical reliability:** establish that the selected Groq model, production prompts, pipeline and validator work across all 13 fixtures.
+2. **Investigator interaction:** establish that an investigator can operate the module through menus, receive understandable results, inspect sources and record decisions without using a chat interface.
 
-The project is developed as a collection of independent modules with explicit responsibilities and integration contracts.
+After those are complete, we freeze the module and move to YOLO.
 
-The roadmap distinguishes:
+I recommend six remaining prompts, numbered 11–16 for continuity. Prompt 13 is conditional: we only issue it if the benchmark exposes defects. This avoids unnecessary implementation work.
 
-- Completed and verified work.
-- Current development.
-- Planned modules.
-- Future integration.
-- Verification and release milestones.
+# **Remaining LLM Analysis Module roadmap**
 
-A planned feature must not be described as implemented. A mocked integration test must not be described as successful real-model execution.
+## **Six remaining prompts**
 
-The objective is to develop the system incrementally while preserving the existing verified implementation.
+1. **Prompt 11 — Groq integration audit**
+
+   Next
+
+   Verify implementation, rate-limit handling, pacing, security and evaluation readiness. Read-only.
+2. **Prompt 12 — Complete live evaluation**
+
+   Run all 13 fixtures through the actual production pipeline and establish benchmark results.
+3. **Prompt 13 — Targeted corrections**
+
+   Fix defects exposed by evaluation, add regression tests and re-evaluate. Conditional.
+4. **Prompt 14 — Investigator interaction prototype**
+
+   Build a menu-based CLI to test the actual investigator workflow, JSON requests, results and review actions.
+5. **Prompt 15 — Final module freeze**
+
+   Documentation, contracts, final tests, reproducibility and release readiness.
+6. **Prompt 16 — Git baseline and CI**
+
+   Review changes, obtain authorization to commit, push, create PR and verify GitHub CI.
+
+The final deliverable is not merely an LLM that returns JSON. It is a standalone analysis module that an investigator can operate, whose outputs can be traced to case records, and whose results can be reviewed and audited.
+
+Below are the complete executor prompts. They are written to be issued sequentially. Do not issue the next prompt until the previous one has been reviewed and approved.
+
+# **Complete executor prompt package**
+
+# MASTER EXECUTION PLAN — LLM ANALYSIS MODULE COMPLETION
+
+## Project context
+
+Project: AI-Assisted Crime Scene Investigation and Evidence Analysis System.
+
+Current branch: `feature/live-gemini-evaluation`.
+
+Current selected LLM provider:
+
+- Provider: Groq
+- Model: `openai/gpt-oss-120b`
+- Endpoint: `https://api.groq.com/openai/v1/chat/completions`
+
+Current reported implementation status:
+
+- Analysis pipeline implemented.
+- Tier A deterministic checks implemented.
+- Three Tier B semantic contradiction categories implemented.
+- Seven-stage validator implemented.
+- 13 evaluation fixtures implemented.
+- Evaluation harness implemented.
+- OpenAI, Gemini, Anthropic and OpenRouter adapters retained.
+- Dedicated Groq adapter added.
+- Groq 12-second pacing added.
+- Investigator-facing CLI interaction workflow not yet implemented.
+- Latest reported offline tests: 135 passed, 0 failed, 1 warning.
+- Latest reported Groq median latency: 1.87 seconds in the tested sample.
+- Complete 13-fixture live evaluation has not yet been established.
+
+The objective is to finish the LLM Analysis Module before starting the YOLO module.
+
+The LLM module must remain an independent subsystem. It receives structured case context, analyzes cross-source inconsistencies, returns validated suggestions and allows an investigator to review those suggestions.
+
+It is not an autonomous investigator and must never determine guilt or independently establish facts.
+
+## Permanent architectural constraints
+
+1. Preserve the existing `case_context` schema.
+2. Preserve stable dotted references such as `notes.N4`, `photos.P1.d3`, `timeline.T2` and `evidence.E1`.
+3. Preserve all eight Tier A rules, A1–A8.
+4. Do not reintroduce A9.
+5. Preserve exactly three Tier B categories:
+   - `spatial_inconsistency`
+   - `timeline_contradiction`
+   - `contextual_contradiction`
+6. Do not introduce ambiguity, follow-up or semantic coverage-gap categories.
+7. Preserve one analysis type per LLM invocation.
+8. Preserve the existing validator and its seven checks.
+9. Empty suggestions are valid.
+10. Every suggestion must cite resolvable case-context references.
+11. Never weaken grounding or validation requirements just to improve model recall.
+12. Never allow the LLM to decide application navigation or investigator actions.
+13. Preserve investigator control and auditability.
+14. Do not send photographs, image bytes, image paths or base64 to the LLM.
+15. Keep the evaluation harness independent of the future database and UI.
+16. Never expose API keys or other secrets in logs or reports.
+
+## Collaboration and execution rules
+
+- Work only within the explicitly authorized prompt scope.
+- Do not silently expand scope.
+- Do not stage or commit files.
+- Do not push branches or merge pull requests.
+- Do not modify `.env` unless explicitly authorized.
+- Do not make live API calls unless the current prompt explicitly authorizes them.
+- Do not repeat failed API requests in uncontrolled loops.
+- Report actual commands and results.
+- Distinguish verified facts from assumptions.
+- Preserve existing accepted functionality.
+- Stop and report if an architectural conflict is discovered.
+- Do not continue to the next prompt without coordinator approval.
 
 ---
 
-# 2. Current Project Position
+# PROMPT 11 — FINAL GROQ INTEGRATION AUDIT
 
-| Module | Name | Status |
-|---|---|---|
-| 1 | LLM Analysis Engine | Frozen and verified |
-| 2 | YOLO Detection and Evidence Management | Architecture proposed; Y0 pending |
-| 3 | Spatial Mapping | Planned |
-| 4 | Timeline Reconstruction | Planned |
-| 5 | Case Context and Persistence | Planned |
-| 6 | Report Generation | Planned |
-| 8 | Investigator Application Interface | Planned |
+## Objective
 
-Module 7 is not currently defined in the approved architecture. Do not create a Module 7 implementation task without an approved specification.
+Perform a read-only audit of the newly implemented Groq provider integration and its interaction with the existing analysis pipeline.
 
-## 2.1 Completed milestone — Module 1
+This is a diagnostic and verification task. No implementation changes are authorized.
 
-Module 1 is frozen.
+## Files to inspect
 
-Its completed responsibilities include:
+At minimum:
 
-- Structured case-context input.
-- Tier A deterministic rules A1–A8.
-- Three Tier B semantic contradiction categories.
-- Semantic eligibility gate.
-- Category-specific LLM prompts.
-- Multi-provider LLM abstraction.
-- Selected Groq production configuration.
-- Seven-stage response validator.
-- Reference grounding.
-- Analysis execution and audit persistence.
-- Investigator interaction workflow prototype.
-- Thirteen-fixture live evaluation.
-- Offline test and integration verification.
+- `src/llm/client.py`
+- `src/llm/__init__.py`
+- `src/analysis/pipeline.py`
+- `evaluate.py`
+- `analyze.py`
+- `tests/test_client.py`
+- `tests/test_pipeline.py`
+- `tests/test_evaluate.py`
+- `.gitignore`
+- `.env.example`, if present.
 
-The latest handover reports 163 passing tests, 13 valid fixtures, 13 successfully resolved fixture references, and a completed live evaluation.
+Inspect additional files only when necessary to understand the implementation.
 
-The exact verification environment, benchmark artifacts, provider configuration, and known limitations are recorded in the Module 1 handover.
+Do not print or expose `.env` credentials.
 
-**Module 1 is not an active development track.** Reopen it only for a demonstrated defect, a genuine integration incompatibility, or an explicitly approved requirement.
+## A. Groq provider implementation
 
----
+Verify:
 
-# 3. Development Strategy
+1. `groq` is registered as a supported provider.
+2. The endpoint is exactly:
 
-The remaining system should be developed in dependency-aware stages.
+   `https://api.groq.com/openai/v1/chat/completions`
+3. The configured model is:
 
-The broad sequence is:
+   `openai/gpt-oss-120b`
+4. `GROQ_API_KEY` is correctly resolved.
+5. Missing configuration produces a controlled configuration error.
+6. Authentication errors are handled correctly.
+7. HTTP 429 and other provider errors are mapped correctly.
+8. Response parsing produces the internal structure expected by the validator.
+9. JSON mode is configured correctly.
+10. Existing OpenAI, Gemini, Anthropic and OpenRouter adapters remain functional.
 
-```text
-MODULE 1 — LLM ANALYSIS
-        |
-        | FROZEN
-        v
-MODULE 2 — YOLO DETECTION
-        |
-        v
-MODULE 3 — SPATIAL MAPPING
-        |
-        v
-MODULE 4 — TIMELINE RECONSTRUCTION
-        |
-        v
-MODULE 5 — CASE CONTEXT AND PERSISTENCE
-        |
-        +-------------------------+
-        |                         |
-        v                         v
-MODULE 1 — ANALYSIS          MODULE 6 — REPORTING
-        |                         |
-        +------------+------------+
-                     |
-                     v
-            MODULE 8 — APPLICATION
+Do not assume that compatibility with an OpenAI-style endpoint means every provider-specific behaviour is identical.
+
+## B. Retry and transport behaviour
+
+Verify:
+
+- Application-level schema-repair attempts.
+- HTTP transport retry behaviour.
+- Behaviour on HTTP 429.
+- Behaviour on HTTP 500 and other server failures.
+- Behaviour on connection errors and timeouts.
+- Whether any hidden retry layer can multiply API requests.
+
+The evaluation harness must not silently repeat failed requests.
+
+## C. Groq rate-limit pacing
+
+Inspect the 12-second pacing implementation.
+
+Determine:
+
+- Where the delay is implemented.
+- Whether it is applied only to Groq.
+- Whether it affects calls across different cases.
+- Whether it applies between analysis categories.
+- Whether it is applied in both CLI and evaluation paths.
+- Whether it is safe under concurrent execution.
+- Whether it accounts for token-per-minute restrictions.
+- Whether it can cause unnecessary delays.
+- Whether the delay is included in complete-case latency measurement.
+
+Do not assume that 12 seconds is sufficient simply because it was implemented.
+
+## D. Latency measurement
+
+The established evaluation target is median complete-case latency below 6000 ms.
+
+Verify the actual measurement boundaries.
+
+Report separately:
+
+1. Provider request latency.
+2. Validation and processing latency.
+3. Pacing delay.
+4. Complete-case wall-clock latency.
+
+Do not exclude pacing or other real processing time from complete-case latency merely to make the metric pass.
+
+If the current implementation makes the six-second target structurally incompatible with multi-category pacing, report that explicitly. Do not change the acceptance criterion without coordinator approval.
+
+## E. Configuration and security
+
+Verify:
+
+- Dotenv loading from the CLI entry points.
+- Environment-variable precedence.
+- `.env` exclusion from Git.
+- No hardcoded API keys.
+- No secret leakage into reports.
+- No unnecessary sensitive case data in logs.
+
+## F. Offline verification
+
+Run:
+
+```
+pytest -q
+python scripts/check_fixtures.py
+python scripts/check_refs.py
 ```
 
-This is the broad development dependency direction, not a requirement to finish every module completely before beginning the next.
+Expected reported baseline:
 
-Each module should establish and verify its own contracts. Integration should occur incrementally where dependencies permit.
+- 135 tests passing.
+- 13 fixtures valid.
+- 13 references valid.
 
-## 3.1 Engineering principles
+Report actual differences rather than forcing the old expected count.
 
-1. Preserve the frozen Module 1 implementation.
-2. Build new modules under their own `src/` packages.
-3. Inspect the actual repository before implementation.
-4. Reuse existing contracts instead of inventing parallel formats.
-5. Keep original source material immutable.
-6. Separate machine output from investigator decisions.
-7. Keep persistence ownership centralized in Module 5.
-8. Use offline stubs for ordinary automated tests.
-9. Do not introduce dependencies without inspecting compatibility.
-10. Update `PLAN.md` at significant milestones.
-11. Document verified behavior, not intended behavior, in executor handovers.
-12. Keep module boundaries explicit.
+## Restrictions
+
+- Read-only.
+- No source modifications.
+- No `.env` modifications.
+- No API requests.
+- No live evaluation.
+- No staging or committing.
+
+## Deliverable
+
+Provide:
+
+1. Exact files inspected.
+2. Exact commands executed.
+3. Results for sections A–E.
+4. Offline test results.
+5. Identified defects and risks.
+6. Whether Prompt 12 can safely proceed.
+
+Stop after the audit.
 
 ---
 
-# 4. Module 2 — YOLO Detection and Evidence Management
+# PROMPT 12 — COMPLETE LIVE EVALUATION
 
-**Current status: Architecture proposed. Y0 is the next task.**
+## Objective
 
-## 4.1 Objective
+Evaluate the selected production model, `openai/gpt-oss-120b` through Groq, against all 13 established fixtures using the actual production pipeline and evaluation harness.
 
-Build a computer-vision subsystem that ingests crime-scene photographs, performs pretrained YOLO object detection, records candidate detections, generates annotated previews, and supports investigator-controlled evidence management.
+This is the first complete live evaluation of the selected model.
 
-The core distinction is:
+Prompt 11 must have been reviewed and approved before starting.
 
-**Detection candidate ≠ confirmed evidence.**
+## Preconditions
 
-The model identifies potential objects. The investigator reviews them. The system records both the machine prediction and the human decision.
+Verify:
 
-## 4.2 Target architecture
+- `LLM_PROVIDER=groq`.
+- `LLM_MODEL=openai/gpt-oss-120b`.
+- `GROQ_API_KEY` is configured.
+- The correct provider and model are active.
+- No duplicate conflicting provider variables are active.
+- The evaluation harness is functional.
+- All 13 fixtures pass fixture validation.
+- All references resolve.
 
-Initial package:
+Never print the API key.
 
-```text
-src/yolo/
-├── __init__.py
-├── __main__.py
-├── models.py
-├── store.py
-├── detector.py
-├── preview.py
-├── service.py
-├── exporter.py
-└── exceptions.py
+If configuration is incorrect, stop without making an API request.
+
+## Execution
+
+Run:
+
+```
+python evaluate.py --max-concurrency 1
 ```
 
-This structure is subject to Y0 repository inspection.
+Use the existing production pipeline and validator.
 
-### Core entities
+Do not create a separate simplified evaluation path.
 
-| Entity | Responsibility |
-|---|---|
-| `PhotoRecord` | Original photograph and integrity metadata |
-| `DetectionRun` | Model and inference execution provenance |
-| `DetectionCandidate` | Machine-generated object prediction |
-| `EvidenceRecord` | Investigator-managed evidence item |
-| `ReviewEvent` | Append-only investigator decision history |
+Do not bypass the semantic gate.
 
-## 4.3 Implementation stages
+Do not bypass validation.
 
-### Y0 — Read-only pre-design inspection
+Do not modify fixtures or expected results.
 
-**Status: NEXT**
+Do not change prompts during the evaluation.
 
-Objective: establish the actual repository constraints before implementation.
+## Request discipline
+
+This is one controlled benchmark run.
+
+- Use concurrency 1.
+- Respect existing Groq pacing.
+- Do not launch duplicate evaluations.
+- Do not automatically repeat the entire benchmark after an error.
+- Stop and report if the provider returns persistent 429, authentication failure or configuration failure.
+- Preserve partial diagnostic information if execution stops.
+
+The evaluation may involve multiple API requests because each case can require multiple eligible analysis categories. Record the actual request count.
+
+## Required metrics
+
+Evaluate the established acceptance criteria:
+
+| Metric                       | Acceptance criterion |
+| ---------------------------- | -------------------- |
+| Tier A recall                | 1.00                 |
+| Tier B recall                | >= 0.85              |
+| Tier B precision             | >= 0.85              |
+| Hallucination/rejection rate | 0                    |
+| Clean-case false positives   | 0                    |
+| Median complete-case latency | < 6000 ms            |
+
+Tier A precision remains informational, not an acceptance criterion.
+
+Do not redefine any metric.
+
+## Important interpretation rules
+
+1. A reference resolving successfully does not prove semantic correctness.
+2. A suggestion matching expected type and reference set does not automatically prove every statement is factually correct.
+3. A rejected suggestion is not automatically a model hallucination; inspect the rejection reason.
+4. A clean-case suggestion counts as a false positive according to the established evaluation logic.
+5. Do not silently treat N/A metrics as passing.
+6. Do not treat API errors as empty model responses.
+7. Distinguish provider failures from model-quality failures.
+
+## Latency reporting
+
+Report:
+
+- Per-request provider latency.
+- Per-case complete wall-clock latency.
+- Median complete-case latency.
+- Pacing time.
+- Total benchmark duration.
+
+Pacing and real processing time must remain included in complete-case wall-clock latency.
+
+If the complete-case target fails despite low individual provider latency, report the failure honestly.
+
+## Output
+
+Generate the existing JSON and Markdown evaluation reports.
+
+Do not overwrite earlier reports.
+
+Report:
+
+1. Overall acceptance result.
+2. All metrics.
+3. Per-fixture results.
+4. Per-category results.
+5. False positives.
+6. False negatives.
+7. Rejected suggestions and reasons.
+8. API errors.
+9. Request and token counts.
+10. Latency details.
+11. Report file locations.
+12. Whether Prompt 13 is required.
+
+Do not modify source files.
+
+Do not stage or commit.
+
+Stop after producing the report.
+
+---
+
+# PROMPT 13 — TARGETED EVALUATION CORRECTIONS
+
+## Objective
+
+Correct only genuine defects demonstrated by Prompt 12.
+
+This prompt is conditional. If Prompt 12 passes all acceptance criteria, skip Prompt 13 entirely.
+
+## First step: classify failures
+
+For each failure, determine whether it originates from:
+
+- Provider or API behaviour.
+- Incorrect model response.
+- Prompt ambiguity.
+- Semantic-gate eligibility.
+- Validator defect.
+- Fixture or expected-result defect.
+- Evaluation metric implementation.
+- Latency/pacing architecture.
+
+Do not assume every failure is caused by the model.
+
+## Correction requirements
+
+For every confirmed defect:
+
+1. Identify the root cause.
+2. Identify the smallest responsible code or prompt component.
+3. Propose the correction.
+4. Explain possible regressions.
+5. Implement only the approved correction.
+6. Add a focused regression test.
+7. Run the relevant test subset.
+8. Run the complete offline suite.
+
+## Permanent constraints
+
+Do not:
+
+- Remove validator checks to improve recall.
+- Relax reference resolution.
+- Permit invented references.
+- Introduce new Tier B categories.
+- Change ground truth to match model output without evidence.
+- Convert empty results into findings.
+- Suppress valid contradictions simply because the model has difficulty identifying them.
+- Change acceptance criteria without explicit coordinator approval.
+
+## Re-evaluation
+
+After approved corrections:
+
+- Re-run fixture validation.
+- Re-run reference validation.
+- Run all offline tests.
+- Produce a new complete live evaluation only after explicit authorization.
+
+Never overwrite the original benchmark.
+
+Keep the original and corrected reports separately identifiable.
+
+## Deliverable
+
+Provide:
+
+- Root-cause analysis.
+- Modified files.
+- Exact changes.
+- Regression tests.
+- Full offline test results.
+- Remaining defects.
+- Whether the engine meets acceptance criteria.
+
+Stop after reporting.
+
+---
+
+# PROMPT 14 — INVESTIGATOR INTERACTION WORKFLOW PROTOTYPE
+
+## Objective
+
+Build a menu-driven CLI prototype that tests the LLM Analysis Module from an investigator's perspective.
+
+This is not the final application UI.
+
+The purpose is to prove that the existing analysis engine can be operated through structured menu selections rather than a conversational interface.
+
+The prototype must reuse the existing production pipeline and `case_context` format.
+
+## Architectural principle
+
+The investigator interacts with the application.
+
+The application constructs structured JSON requests.
+
+The pipeline selects eligible analysis categories, constructs prompts, calls the LLM and validates the result.
+
+The LLM returns suggestions.
+
+The application presents those suggestions and offers deterministic investigator actions.
+
+The LLM must never generate or control application navigation.
+
+## A. Main menu
+
+Implement a menu resembling:
+
+```
+       AI-ASSISTED CRIME SCENE ANALYSIS
+
+1. Select Case
+2. Run Complete Analysis
+3. Run Spatial Inconsistency Analysis
+4. Run Timeline Contradiction Analysis
+5. Run Contextual Contradiction Analysis
+6. View Previous Analysis
+7. Review Findings
+8. View Case Analysis History
+9. Exit
+
+Select an option:
+```
+
+The actual case must be selected or loaded through the existing supported case-loading mechanism.
+
+Do not hardcode C4 as the only available case.
+
+## B. Operation selection
+
+Support:
+
+- Complete analysis.
+- Spatial inconsistency analysis.
+- Timeline contradiction analysis.
+- Contextual contradiction analysis.
+
+A complete analysis means running the existing pipeline for all eligible analysis types.
+
+Do not bypass the existing semantic gate.
+
+Do not combine the three analysis types into a new single LLM call. Preserve the established one-analysis-type-per-invocation architecture.
+
+## C. JSON request envelope
+
+The UI/CLI layer should construct a request envelope similar to:
+
+```
+{
+  "schema_version": "1.0",
+  "request_id": "REQ001",
+  "case_id": "C004",
+  "operation": "analyze",
+  "analysis_types": [
+    "contextual_contradiction"
+  ],
+  "case_context": {}
+}
+```
+
+This is an application-level interaction envelope.
+
+The nested `case_context` must preserve the exact existing production schema.
+
+Do not rename its fields or introduce an alternative representation.
+
+If the existing pipeline API accepts arguments rather than this envelope, implement a thin request adapter. Do not unnecessarily refactor the pipeline.
+
+Validate the operation and analysis type before executing.
+
+Reject unsupported operations and categories with a clear error.
+
+## D. Standard response envelope
+
+Return a structured application response:
+
+```
+{
+  "schema_version": "1.0",
+  "request_id": "REQ001",
+  "case_id": "C004",
+  "module": "llm_analysis",
+  "operation": "analyze",
+  "status": "completed",
+  "data": {
+    "analysis_id": "AN001",
+    "suggestions": []
+  },
+  "warnings": [],
+  "errors": [],
+  "available_actions": [
+    "view_sources",
+    "view_analysis_history",
+    "return_to_menu"
+  ]
+}
+```
+
+The example is illustrative. Adapt the internal data to the actual production pipeline output.
+
+Do not fabricate analysis IDs, findings or references.
+
+The response must distinguish:
+
+- `completed`
+- `completed_with_warnings`
+- `failed`
+
+If the existing pipeline uses different internal statuses, map them consistently at the application boundary.
+
+## E. Result states and menu behaviour
+
+Implement separate presentation paths.
+
+### State 1: Findings returned
+
+Display:
+
+- Finding number.
+- Category.
+- Severity.
+- Description.
+- Source references.
+- Validation status, if available.
+
+Offer actions:
+
+- View source records.
+- Mark as acknowledged.
+- Mark as not relevant.
+- Defer review.
+- Return to results.
+- Return to analysis menu.
+
+Do not describe acknowledgement as confirmation of factual truth.
+
+### State 2: Empty suggestions
+
+Display:
+
+"No contradictions were identified in the selected analysis category using the available case information."
+
+Offer:
+
+- Run another category.
+- View analysis details.
+- Return to menu.
+- Return to case dashboard.
+
+Never claim that no contradictions exist in the case.
+
+### State 3: Partial completion
+
+If some categories complete and others are ineligible or fail:
+
+- Display completed categories.
+- Display unavailable or failed categories.
+- Explain the reason for each.
+- Preserve successful results.
+- Offer retry only for eligible failed operations.
+
+Do not represent partial completion as complete success.
+
+### State 4: Technical failure
+
+Display a clear failure message.
+
+Offer:
+
+- Retry.
+- View technical error details.
+- Return to menu.
+
+Do not represent a provider error as an empty successful result.
+
+## F. Investigator review records
+
+Keep model findings separate from investigator decisions.
+
+Use a review structure similar to:
+
+```
+{
+  "suggestion_id": "S001",
+  "review_status": "deferred",
+  "reviewed_by": "investigator_01",
+  "reviewed_at": "2026-11-21T14:30:00",
+  "comment": "Awaiting ownership verification."
+}
+```
+
+Permitted review statuses:
+
+- `pending`
+- `acknowledged`
+- `not_relevant`
+- `deferred`
+
+A `not_relevant` decision should require a reason.
+
+An acknowledgement does not establish that the underlying claim is true.
+
+Review records must not silently modify or delete the original model response.
+
+Preserve analysis history.
+
+If persistent database storage is not yet part of this module, use a clearly identified prototype persistence mechanism. Do not pretend temporary in-memory state is durable.
+
+## G. Available actions
+
+Generate available actions deterministically from application state.
+
+The LLM must not decide which buttons or menu options appear.
+
+For example:
+
+- Before analysis: run analysis, select case, exit.
+- After successful analysis: view sources, review findings, run another category, view history.
+- After failure: inspect error, retry, return.
+- After review: return to findings or menu.
+
+Do not expose actions that are invalid for the current state.
+
+## H. Testing strategy
+
+First implement the interaction flow with mocked LLM responses.
+
+Test:
+
+1. Case selection.
+2. Valid menu operations.
+3. Invalid menu selections.
+4. JSON request validation.
+5. Correct pipeline dispatch.
+6. Findings display.
+7. Empty-result display.
+8. Partial completion.
+9. Technical failure.
+10. Source-reference navigation.
+11. Review status updates.
+12. Mandatory dismissal reasons for `not_relevant`.
+13. Analysis history.
+14. Return navigation.
+15. No fabricated results.
+16. No LLM-controlled actions.
+17. No accidental mutation of original findings.
+
+Then test the same interaction path using the actual production pipeline and the selected Groq provider only after explicit authorization for live API usage.
+
+Do not run repeated live requests during development.
+
+## I. Scope restrictions
+
+- No React frontend.
+- No Flask or FastAPI integration unless already required by the existing architecture.
+- No database migration.
+- No YOLO changes.
+- No OpenCV changes.
+- No changes to the existing case-context schema.
+- No changes to Tier A/Tier B semantics.
+- No changes to the validator's grounding rules.
+- No automatic acceptance of model findings.
+- No staging or commits.
+
+## Acceptance criteria
+
+The investigator must be able to:
+
+1. Select a case.
+2. Select an analysis operation.
+3. Submit a structured request.
+4. Receive and understand the result.
+5. Inspect the cited source records.
+6. Record an independent review decision.
+7. Return to the menu.
+8. View prior analysis and review history.
+
+All response states must behave correctly.
+
+All existing tests must continue to pass.
+
+## Deliverable
+
+Provide:
+
+- Interaction architecture.
+- Menu flow.
+- Request and response examples.
+- Modified and new files.
+- Test results.
+- Sample CLI session.
+- Known limitations.
+- Confirmation that the production pipeline and case-context schema remain intact.
+
+Stop after reporting.
+
+---
+
+# PROMPT 15 — FINAL LLM ANALYSIS MODULE FREEZE
+
+## Objective
+
+Prepare the LLM Analysis Module for a stable handover to the next project module: YOLO.
+
+This is a final consolidation and verification milestone.
+
+## A. Architecture verification
+
+Confirm that the LLM module includes:
+
+1. Structured case-context input.
+2. Tier A deterministic analysis.
+3. Semantic gating.
+4. Three Tier B categories.
+5. Category-specific prompts.
+6. Provider abstraction.
+7. Groq production configuration.
+8. Response validation.
+9. Reference grounding.
+10. Severity validation.
+11. Evaluation harness.
+12. Audit and reporting.
+13. Investigator interaction prototype.
+14. Investigator review-state separation.
+
+## B. Provider configuration
+
+Document:
+
+- Selected provider: Groq.
+- Selected model: `openai/gpt-oss-120b`.
+- Endpoint.
+- Required environment variables.
+- Authentication setup.
+- Rate-limit considerations.
+- Retry behaviour.
+- Model replacement procedure.
+
+Keep alternative provider adapters if they remain functional.
+
+Do not remove them merely because Groq is the selected provider.
+
+## C. Data contracts
+
+Document:
+
+- Existing `case_context` schema.
+- Stable reference format.
+- Analysis request envelope.
+- Analysis response envelope.
+- Finding structure.
+- Investigator review record.
+- Error and warning structure.
+
+Clearly distinguish application-level interaction envelopes from the existing nested `case_context`.
+
+## D. Analysis semantics
+
+Document:
+
+- A1–A8.
+- Exactly three Tier B categories.
+- Semantic-gate rules.
+- Validator checks.
+- Empty-result behaviour.
+- Partial-result behaviour.
+- Known hallucination-detector limitations.
+- Investigator responsibilities.
+
+## E. Evaluation documentation
+
+Preserve:
+
+- All 13 fixtures.
+- Expected results.
+- Evaluation scripts.
+- Benchmark reports.
+- Acceptance criteria.
+- Actual model and provider configuration used for the successful evaluation.
+
+A benchmark must be reproducible.
+
+Do not label a failed or incomplete evaluation as passed.
+
+## F. Testing
+
+Run:
+
+```
+pytest -q
+python scripts/check_fixtures.py
+python scripts/check_refs.py
+```
+
+Run the appropriate CLI interaction tests.
+
+Confirm that the final live evaluation report satisfies the acceptance criteria.
+
+If any required acceptance criterion remains unmet, do not declare the module frozen.
+
+## G. Module boundary
+
+The LLM Analysis Module must not directly depend on:
+
+- YOLO implementation internals.
+- OpenCV implementation internals.
+- React components.
+- Browser state.
+- Image bytes.
+- Database-specific ORM models.
+
+It should consume a validated structured context and return structured results.
+
+The future Case Context Module will be responsible for generating that context from application data.
+
+## Restrictions
+
+- Do not introduce unrelated features.
+- Do not redesign the project.
+- Do not remove working provider adapters without authorization.
+- Do not change established analysis semantics.
+- Do not stage or commit.
+
+## Deliverable
+
+Produce a final module handover document containing:
+
+1. Architecture.
+2. Module responsibilities.
+3. Input and output contracts.
+4. Provider configuration.
+5. Evaluation results.
+6. Test results.
+7. Known limitations.
+8. Operational commands.
+9. Integration requirements for future modules.
+10. Explicit freeze readiness: PASS or FAIL.
+
+Stop after reporting.
+
+---
+
+# PROMPT 16 — GIT BASELINE AND CI VERIFICATION
+
+## Objective
+
+Establish a clean, reproducible Git baseline for the completed LLM Analysis Module.
+
+This prompt includes review and preparation. Actual staging, committing, pushing and merging require separate explicit user authorization.
+
+## A. Repository inspection
 
 Inspect:
 
-- Existing case-context JSON Schema.
-- Representative case fixtures.
-- Reference resolver.
-- Tier A implementation.
-- Module 1 pipeline and workflow conventions.
-- Python packaging and import configuration.
-- Existing image and file-storage dependencies.
-- Python and installed package versions.
-- Hardware and model compatibility.
-- Existing tests and verification conventions.
-- Current `PLAN.md` and handbooks.
-
-Required outputs:
-
-1. Exact schema mapping.
-2. Exact reference-resolution behavior.
-3. Actual A1, A2, A3, and A8 implementation behavior.
-4. Existing storage and workflow conventions.
-5. Dependency and hardware report.
-6. Model candidates and compatibility findings.
-7. Proposed internal data contracts.
-8. Final `src/yolo/` architecture.
-9. Integration risks.
-10. Recommended Y1 implementation scope.
+```
+git status
+git branch --show-current
+git diff --stat
+git diff
+git diff --check
+```
 
-Restrictions:
+Identify every modified, deleted, new and untracked file.
 
-- Read-only.
-- No source changes.
-- No dependency installation.
-- No model downloads.
-- No schema changes.
-- No Git operations.
+## B. Secret protection
 
-**Y0 exit condition:** Coordinator reviews the inspection report and approves the implementation specification.
+Verify:
 
-### Y1 — Data contracts and immutable photo storage
+- `.env` is ignored.
+- No API keys appear in source files.
+- No API keys appear in test fixtures.
+- No credentials appear in reports.
+- No temporary diagnostic scripts are accidentally included.
+- No scratch directories or unrelated files are included.
 
-Objective: establish the data foundation.
+Do not print secret values.
 
-Implement:
+## C. Scope review
 
-- Internal data models.
-- Photo ingestion.
-- Image validation.
-- SHA-256 calculation.
-- Immutable original storage.
-- Stable photo and detection identifiers.
-- JSON/JSONL persistence.
-- Append-only audit infrastructure.
-- Safe file-path handling.
-- Atomic writes where appropriate.
+Confirm that the changes belong to the completed LLM Analysis Module.
 
-Required tests:
+Do not include unrelated `Misc/` files or temporary diagnostic artifacts.
 
-- Valid and invalid image ingestion.
-- Missing and corrupt image handling.
-- Original-file overwrite prevention.
-- SHA-256 integrity.
-- Identifier uniqueness.
-- Restart-safe identifier allocation.
-- Case isolation.
-- Persistence and recovery behavior.
+Do not restore intentionally deleted files.
 
-**Y1 exit condition:** original photographs are safely stored and their identity and integrity can be verified across application restarts.
+## D. Test readiness
 
-### Y2 — Detector backend and model abstraction
+Verify the final offline suite and the successful benchmark report.
 
-Objective: introduce pretrained YOLO inference without coupling the entire application to Ultralytics.
+Check that CI uses the correct Python version and dependencies.
 
-Implement:
+Confirm that the workflow does not require live API credentials for ordinary tests.
 
-- Detector backend interface.
-- Deterministic stub backend.
-- Lazy-loaded Ultralytics backend.
-- Detector configuration.
-- Prediction extraction.
-- Detection-run provenance.
-- Structured inference errors.
+The CI pipeline should validate:
 
-Model selection must consider:
+- Fixture structure.
+- Reference resolution.
+- Offline tests.
 
-- Existing Python and PyTorch compatibility.
-- Available CPU/GPU resources.
-- Target-class vocabulary.
-- Weight availability.
-- Licensing.
-- Performance requirements.
+It should not make paid or free-tier model requests.
 
-No custom training or fine-tuning in this stage.
-
-Offline tests must not download weights or require network access.
-
-**Y2 exit condition:** the detector abstraction works with deterministic stub predictions, and the real backend is isolated behind the same interface.
-
-### Y3 — Image preparation and annotated previews
-
-Objective: ensure predictions and visualizations remain geometrically consistent with the original photographs.
-
-Implement:
-
-- Image preparation.
-- EXIF orientation handling.
-- Dimension tracking.
-- Resize and letterbox metadata.
-- Bounding-box coordinate transformations.
-- Boundary validation.
-- Preview rendering.
-- Separate preview storage.
-
-Authoritative detection coordinates must refer to the original photograph.
-
-Do not assume the bounding-box centre is a physical floor-contact point.
-
-**Y3 exit condition:** coordinate tests pass and preview generation never modifies the original photograph.
-
-### Y4 — Detection orchestration and candidate lifecycle
-
-Objective: connect image ingestion, model inference, prediction processing, and persistence.
-
-Implement:
-
-- Detection-run orchestration.
-- Candidate generation.
-- Stable detection references.
-- Empty-result handling.
-- Rerun handling.
-- Run-status recording.
-- Failure handling.
-- Prediction provenance.
-
-A successful run producing zero candidates must be distinguishable from a failed run.
-
-A rerun must not silently overwrite the original predictions from an earlier run.
-
-**Y4 exit condition:** the complete mocked photograph-to-detection workflow passes integration tests.
-
-### Y5 — Investigator review and evidence management
-
-Objective: implement the human-in-the-loop review and evidence lifecycle.
-
-Implement:
-
-- Confirmation.
-- Dismissal with mandatory non-empty reason.
-- Append-only review events.
-- Controlled review corrections.
-- Promotion of confirmed detections.
-- Multi-photo and multi-detection evidence associations.
-- Manual evidence creation.
-- Evidence revision history.
-- Duplicate association prevention.
-
-Rules:
-
-- All candidates begin as `unreviewed`.
-- No confidence threshold automatically confirms a candidate.
-- Unreviewed and dismissed candidates cannot be promoted.
-- Similar-looking objects are not automatically merged.
-- Manual evidence does not require a YOLO prediction.
-- Previous review decisions remain auditable.
-
-**Y5 exit condition:** all valid and invalid review transitions are tested, and evidence can be managed independently of raw detector predictions.
-
-### Y6 — Case-context exporter and Module 1 integration
-
-Objective: make Module 2 outputs compatible with the existing analysis engine.
-
-Implement:
-
-- Case-context projection.
-- Exact field mapping.
-- Schema validation.
-- Detection reference validation.
-- Evidence relationship validation.
-- Relevant Tier A integration tests.
-- Module 1 pipeline compatibility tests.
-
-Verify against the actual implementation of:
-
-- `schemas/case_context.schema.json`
-- `src/analysis/refs.py`
-- `src/analysis/tier_a.py`
-- `src/analysis/pipeline.py`
-
-Specific attention:
-
-- A1: unreviewed candidates.
-- A2: dismissed candidates with missing reasons.
-- A3: note/object-class/evidence relationships.
-- A8: confirmed evidence without map positions.
-
-Module 2 must not modify the frozen Module 1 source code to accommodate its internal models.
-
-**Y6 exit condition:** exported context passes the actual schema, reference resolver, and relevant Module 1 integration tests.
-
-### Y7 — CLI and controlled real-model inference
-
-Objective: provide an initial operational interface and verify actual model execution.
-
-Implement:
-
-- Deterministic CLI.
-- Photograph registration.
-- Detection execution.
-- Candidate listing.
-- Investigator review.
-- Evidence promotion.
-- Manual evidence creation.
-- Case-context export.
-- Integrity verification.
-- History inspection.
-
-The CLI must call the service layer. Business logic must not exist exclusively in menu handlers.
-
-Run offline tests independently of real model execution.
-
-A real pretrained-model smoke test requires explicit authorization if it involves installing dependencies or downloading weights.
-
-Record:
-
-- Model and weight identifier.
-- Inference settings.
-- Input image dimensions.
-- Detected candidates.
-- Bounding-box coordinates.
-- Preview output.
-- Runtime.
-- Original-image SHA-256 before and after processing.
-
-**Y7 exit condition:** offline tests pass and one controlled real-model inference succeeds with verified image integrity.
-
-### Y8 — Model evaluation, documentation and freeze
-
-Objective: complete Module 2 verification and prepare downstream integration.
-
-Evaluate a documented, controlled set of representative photographs.
-
-Measure:
-
-- Per-class precision.
-- Per-class recall.
-- False positives.
-- False negatives.
-- Detection workload per photograph.
-- Confidence distribution.
-- Inference latency.
-
-A small validation set is an engineering baseline, not proof of general forensic accuracy.
+## E. Change proposal
 
 Produce:
 
-- `docs/YOLO_MODULE_HANDOVER.md`
-- Updated `PLAN.md`
-- Updated Executor Handbook.
-- Model configuration and provenance.
-- Evaluation report.
-- Test report.
-- Integration contract.
-- Known limitations.
-- Final freeze verdict.
+- Exact files proposed for staging.
+- Exact files excluded.
+- Proposed commit message.
+- Current branch.
+- Diff summary.
+- CI expectations.
 
-**Y8 exit condition:** all approved acceptance criteria are supported by verification evidence, the complete project test suite passes, and the handover accurately reflects the implementation.
+Do not stage files yet.
 
-## 4.4 Module 2 acceptance criteria
+## F. Authorization gate
 
-| ID | Requirement |
-|---|---|
-| M2-01 | Dedicated `src/yolo/` package |
-| M2-02 | Module 1 remains untouched |
-| M2-03 | Original photographs immutable |
-| M2-04 | SHA-256 integrity verification |
-| M2-05 | Pretrained detector backend |
-| M2-06 | Model provenance recorded |
-| M2-07 | Stable detection references |
-| M2-08 | Original-image coordinate accuracy |
-| M2-09 | Separate annotated previews |
-| M2-10 | Every candidate starts unreviewed |
-| M2-11 | Investigator-controlled confirmation |
-| M2-12 | Mandatory dismissal reason |
-| M2-13 | Append-only review history |
-| M2-14 | Confirmed detection promotion |
-| M2-15 | Manual evidence creation |
-| M2-16 | Multi-photo evidence association |
-| M2-17 | Evidence revision history |
-| M2-18 | Schema-valid case-context export |
-| M2-19 | Module 1 reference and Tier A compatibility |
-| M2-20 | Module 3 geometric integration readiness |
-| M2-21 | Module 5 persistence integration readiness |
-| M2-22 | Offline automated test suite |
-| M2-23 | Controlled real-model inference |
-| M2-24 | Documented model evaluation |
-| M2-25 | Complete handover and updated project records |
+Stop and wait for the user to explicitly authorize staging and committing.
+
+After authorization:
+
+1. Stage only approved files.
+2. Commit to `feature/live-gemini-evaluation`.
+3. Push the feature branch.
+4. Create a pull request to `main`.
+5. Wait for the required `Build & Test` status check.
+6. Report CI results.
+
+Do not merge without explicit authorization.
+
+## Final acceptance
+
+The LLM Analysis Module is considered released when:
+
+- The benchmark is accepted.
+- The interaction prototype works.
+- The final offline suite passes.
+- The working tree changes are reviewed.
+- The feature branch is pushed.
+- The required CI check passes.
+- The user authorizes the merge.
+
+Do not claim release completion before these conditions are satisfied.
+
+Stop at every authorization boundary.
 
 ---
 
-# 5. Module 3 — Spatial Mapping
+# END OF MASTER EXECUTION PLAN
 
-**Status: PLANNED**
+## **3. What the interaction prototype will prove**
 
-## 5.1 Objective
+There is a distinction worth emphasizing: your existing evaluation harness tests analytical correctness, but it does not fully test the investigator's experience. Prompt 14 closes that gap.
 
-Develop a subsystem that represents and reconstructs spatial relationships between crime-scene photographs, scene geometry, and evidence locations.
+The final interaction flow should look like this:
 
-## 5.2 Expected responsibilities
+**Select case**
 
-- Scene coordinate-system definition.
-- Image-to-scene geometric relationships.
-- Physical reference-point handling.
-- Floor-plan or scene-plane representation.
-- Evidence positioning.
-- Investigator-adjustable spatial anchors.
-- Spatial relationship calculations.
-- Spatial summaries compatible with the case-context contract.
+C004
 
-## 5.3 Dependencies
+**Select operation**
 
-Module 3 consumes suitable outputs from Module 2:
+Complete / Spatial / Timeline / Contextual
 
-- Original photograph references.
-- Original image dimensions.
-- Bounding boxes.
-- Detection references.
-- Investigator-provided anchor points where supported.
+**Build JSON request**
 
-Module 3 owns spatial transformations and physical-position calculations.
+Existing case_context + selected operation
 
-## 5.4 Development stages
+**Analysis pipeline**
 
-The detailed implementation plan must be created after inspecting the actual image inputs, available calibration assumptions, and intended scene geometry.
+Tier A → semantic gate → LLM → validator
 
-Expected stages:
+**Display result**
 
-1. Read-only inspection and geometric design.
-2. Coordinate-system and scene models.
-3. Image geometry and reference-point handling.
-4. Spatial transformation and mapping.
-5. Evidence-position integration.
-6. Case-context exporter.
-7. Controlled spatial verification.
-8. Documentation and freeze.
+Findings / no findings / partial / error
 
-## 5.5 Completion conditions
+**Investigator review**
 
-- Coordinate systems are explicitly defined.
-- Spatial transformations are tested.
-- Physical reference points are traceable.
-- Evidence positions are not fabricated.
-- Investigator adjustments are preserved.
-- Exported data satisfies the approved case-context contract.
-- Integration with Module 2 and Module 5 is verified.
+View sources · Acknowledge · Not relevant · Defer
 
----
+**Return to menu / View history**
 
-# 6. Module 4 — Timeline Reconstruction
+The application, not the LLM, decides what actions are available after each response. That is a fundamental boundary.
 
-**Status: PLANNED**
+## **4. When can we call the LLM module complete?**
 
-## 6.1 Objective
+These are the final release conditions:
 
-Create structured temporal records from investigator-provided and other approved case information.
+| Requirement            | Completion condition                                   |
+| ---------------------- | ------------------------------------------------------ |
+| Analytical correctness | Full 13-fixture benchmark accepted                     |
+| Deterministic checks   | A1–A8 verified                                         |
+| Semantic analysis      | All three Tier B categories tested                     |
+| Grounding              | References validated; hallucination criteria satisfied |
+| Performance            | Complete-case latency meets the approved target        |
+| User interaction       | Menu-driven workflow tested                            |
+| Investigator control   | Review decisions stored separately from model findings |
+| Reliability            | Offline tests and error-state tests pass               |
+| Reproducibility        | Reports and configuration documented                   |
+| Release                | Git baseline and CI verified                           |
 
-## 6.2 Expected responsibilities
+One issue deserves special attention: the 12-second Groq pacing and the six-second complete-case latency requirement. We must resolve that honestly in Prompt 11. If pacing is included in the complete-case measurement and causes the target to fail, we cannot simply exclude it from the metric.
 
-- Event records.
-- Event descriptions.
-- Time expressions.
-- Source references.
-- Temporal normalization where justified.
-- Uncertainty preservation.
-- Event ordering.
-- Timeline validation.
-- Case-context export.
+**My recommended immediate sequence is Prompt 11 → Prompt 12 → Prompt 13 if needed → Prompt 14 → Prompt 15 → Prompt 16.**
 
-## 6.3 Development stages
+Once Prompt 16 is accepted and the module is released, we stop changing the LLM module except for genuine bugs or integration requirements. The next major development track becomes YOLO.
 
-1. Read-only inspection of the existing timeline contract.
-2. Event data-model design.
-3. Event ingestion and source tracking.
-4. Temporal normalization and uncertainty handling.
-5. Ordering and validation.
-6. Case-context exporter.
-7. Module 1 integration tests.
-8. Documentation and freeze.
-
-## 6.4 Completion conditions
-
-- Timeline entries follow the existing schema.
-- Every required source is preserved.
-- Missing and uncertain timestamps are represented honestly.
-- Temporal normalization is deterministic and tested.
-- Module 1 can consume the resulting timeline.
-- No unsupported event or timestamp is fabricated.
-
----
-
-# 7. Module 5 — Case Context and Persistence
-
-**Status: PLANNED**
-
-## 7.1 Objective
-
-Build the central persistence and case-context assembly subsystem.
-
-Module 5 owns the eventual durable case state.
-
-## 7.2 Responsibilities
-
-- SQLite database design.
-- Case and record persistence.
-- Photo metadata and storage references.
-- Detection and evidence relationships.
-- Investigator review history.
-- Spatial records.
-- Timeline records.
-- Case-level data validation.
-- Reference integrity.
-- Schema-version handling.
-- Case-context construction.
-- Context-size and token-budget management.
-- Data migration.
-
-## 7.3 Architectural boundary
-
-The database model must remain distinct from the public `case_context` JSON representation.
-
-Module 1 continues to receive validated structured context. It must not become coupled to SQLite or ORM internals.
-
-Module 2's prototype JSON/JSONL store should be replaceable by the Module 5 persistence implementation without rewriting its business logic.
-
-## 7.4 Development stages
-
-1. Read-only inspection of existing module data contracts.
-2. Database and entity relationship design.
-3. SQLite schema and migration foundation.
-4. Persistence adapters for module records.
-5. Case-level relationship and reference integrity.
-6. Case-context assembly.
-7. Schema validation and token budgeting.
-8. Integration with Modules 1–4.
-9. Migration, recovery, and persistence tests.
-10. Documentation and freeze.
-
-## 7.5 Completion conditions
-
-- Persistent case data is reliable.
-- Module relationships are preserved.
-- References resolve.
-- Data migrations are controlled.
-- Case context validates against the shared schema.
-- Module 1 consumes the generated context without database dependencies.
-- Existing module behavior remains intact.
-
----
-
-# 8. Module 6 — Report Generation
-
-**Status: PLANNED**
-
-## 8.1 Objective
-
-Generate structured, traceable investigator-facing reports from the system's validated records.
-
-## 8.2 Responsibilities
-
-- Report structure and templates.
-- Case metadata presentation.
-- Evidence summaries.
-- Photograph and preview inclusion.
-- Spatial and timeline information.
-- Tier A deterministic findings.
-- Tier B validated suggestions.
-- Investigator review decisions.
-- Source references.
-- Generation metadata and provenance.
-
-## 8.3 Important presentation rules
-
-Reports must distinguish:
-
-- Original source records.
-- Machine-generated detections.
-- Investigator-confirmed detections.
-- Manually created evidence.
-- Deterministic structural findings.
-- LLM-generated validated suggestions.
-- Investigator review decisions.
-
-A model-generated suggestion must never be presented as an established forensic conclusion.
-
-## 8.4 Development stages
-
-1. Report requirements and document structure.
-2. Input-contract inspection.
-3. Report data model.
-4. ReportLab generation.
-5. Image and evidence presentation.
-6. Finding and review-state presentation.
-7. Output validation and regression tests.
-8. Documentation and freeze.
-
-## 8.5 Completion conditions
-
-- Reports are generated from structured records.
-- Source references remain traceable.
-- Machine and investigator outputs are clearly distinguished.
-- Missing information is not fabricated.
-- PDF generation is deterministic where practical.
-- Report output is tested against representative cases.
-
----
-
-# 9. Module 8 — Investigator Application Interface
-
-**Status: PLANNED**
-
-## 9.1 Objective
-
-Integrate the completed modules into a coherent investigator-facing application.
-
-## 9.2 Responsibilities
-
-- Case dashboard.
-- Case selection and navigation.
-- Photograph ingestion and viewing.
-- Detection review.
-- Evidence management.
-- Spatial visualization.
-- Timeline visualization.
-- Analysis execution.
-- Finding review.
-- Report generation.
-- Application-controlled actions.
-- User identity and permission integration when implemented.
-
-## 9.3 Architectural principles
-
-- UI components must not duplicate backend business logic.
-- Module contracts remain the integration boundaries.
-- The application controls navigation and available actions.
-- The LLM cannot generate or control application actions.
-- Investigator decisions are recorded through explicit application operations.
-- UI state must not silently mutate original case records.
-
-## 9.4 Development stages
-
-1. UI architecture and workflow design.
-2. Backend integration-contract inspection.
-3. Case dashboard and navigation.
-4. Photograph and detection review.
-5. Evidence management.
-6. Spatial and timeline visualization.
-7. Analysis and finding review.
-8. Report integration.
-9. End-to-end application verification.
-10. Documentation and release.
-
-The specific frontend framework and API architecture should be confirmed during this module's design stage rather than assumed in advance.
-
----
-
-# 10. Cross-Module Integration Milestones
-
-Individual modules must be verified before being treated as integrated.
-
-| Milestone | Integration | Expected result |
-|---|---|---|
-| I1 | Module 2 → Module 1 | YOLO outputs produce valid case-context records consumed by the frozen analysis engine |
-| I2 | Module 2 → Module 3 | Detection geometry and investigator anchors are usable for spatial mapping |
-| I3 | Module 3 → Module 5 | Spatial records persist and export correctly |
-| I4 | Module 4 → Module 5 | Timeline records persist and export correctly |
-| I5 | Modules 2–4 → Module 5 | Complete case context can be assembled and validated |
-| I6 | Module 5 → Module 1 | Persisted cases can be analyzed through the existing interface |
-| I7 | Modules 1–5 → Module 6 | Structured case information can produce traceable reports |
-| I8 | Modules 1–6 → Module 8 | Investigator can operate the integrated application |
-
-These milestones require their own tests and reports. Successful completion of an individual module does not automatically establish successful system-wide integration.
-
----
-
-# 11. Project-Wide Quality Gates
-
-Every module should pass the applicable quality gates.
-
-## 11.1 Architecture gate
-
-- Responsibilities are defined.
-- Existing module boundaries are respected.
-- Shared contracts are inspected.
-- No unnecessary dependencies are introduced.
-- No unauthorized changes to frozen modules.
-
-## 11.2 Implementation gate
-
-- Typed and validated internal models where appropriate.
-- Explicit error handling.
-- Deterministic business logic.
-- Safe persistence behavior.
-- Clear separation of I/O and business logic.
-- No hidden external service dependencies in core operations.
-
-## 11.3 Testing gate
-
-- Unit tests.
-- Invalid-input tests.
-- Failure-path tests.
-- Integration tests.
-- Regression tests.
-- Offline verification.
-
-## 11.4 Documentation gate
-
-- Module handover.
-- Data contracts.
-- Architecture and responsibility boundaries.
-- Operational instructions.
-- Verification commands and results.
-- Known limitations.
-- Updated `PLAN.md`.
-
-## 11.5 Release gate
-
-A module is ready for freeze only when its approved acceptance criteria have evidence.
-
-A module's freeze status must be explicitly recorded as PASS or FAIL.
-
----
-
-# 12. Project-Wide Exclusions and Future Scope
-
-The current approved architecture does not establish the following capabilities:
-
-- Automated determination of guilt.
-- Automated identification of suspects.
-- Facial recognition.
-- Autonomous forensic conclusions.
-- Legally certified chain-of-custody management.
-- Automated forensic laboratory analysis.
-- Custom YOLO training.
-- Predictive criminal profiling.
-
-These must not be introduced as assumed features of the existing project.
-
-Potential future capabilities require separate design, legal and technical assessment, and explicit approval.
-
----
-
-# 13. Current Execution Plan
-
-Only the current authorized stage should be executed.
-
-| Order | Task | Status |
-|---|---|---|
-| 1 | Preserve and maintain Module 1 freeze | Completed |
-| 2 | Consolidate Module 2 architecture | Completed as proposed design |
-| 3 | Execute Module 2 Y0 read-only inspection | Next |
-| 4 | Review Y0 findings and approve final contracts | Pending |
-| 5 | Implement Module 2 Y1–Y8 sequentially | Pending |
-| 6 | Freeze and hand over Module 2 | Pending |
-| 7 | Design and implement Module 3 | Future |
-| 8 | Design and implement Module 4 | Future |
-| 9 | Design and implement Module 5 | Future |
-| 10 | Integrate and verify Modules 1–5 | Future |
-| 11 | Design and implement Module 6 | Future |
-| 12 | Design and implement Module 8 | Future |
-| 13 | Perform full-system verification and release | Future |
-
-Do not begin later stages merely because they appear in this document. Their implementation requires the relevant design and execution approval.
-
----
-
-# 14. Immediate Next Task — Module 2 Y0
-
-The next executor task is:
-
-**MODULE 2 — STAGE Y0: READ-ONLY PRE-DESIGN INSPECTION**
-
-The executor must inspect the real repository and produce an evidence-based report covering:
-
-1. Exact case-context schema.
-2. Exact reference resolver behavior.
-3. Exact Tier A A1, A2, A3, and A8 implementation.
-4. Existing workflow and storage conventions.
-5. Python packaging and import conventions.
-6. Installed dependencies and hardware.
-7. Suitable pretrained model candidates.
-8. Proposed Module 2 internal data contracts.
-9. Integration requirements and risks.
-10. Final Y1 implementation recommendation.
-
-Restrictions:
-
-- No implementation.
-- No source modifications.
-- No dependency installation.
-- No model downloads.
-- No schema changes.
-- No Module 1 modifications.
-- No `PLAN.md` or handbook modifications.
-- No Git operations.
-
-The report must distinguish verified facts, assumptions, and recommendations.
-
-After review, the coordinator will approve the final Module 2 design and prepare the Y1 execution prompt.
-
----
-
-# 15. Roadmap Maintenance Rules
-
-This document describes the approved development direction. It is not a record of every implementation detail or every executor command.
-
-Maintain the following separation:
-
-- **PROJECT_BRIEF.md:** stable architecture, responsibilities, and contracts.
-- **full_roadmap.md:** development stages and dependencies.
-- **PLAN.md:** current state, active task, decisions, evidence, and next step.
-- **COORDINATOR_HANDBOOK.md:** architectural decision history.
-- **EXECUTOR_HANDBOOK.md:** verified repository facts and implementation conventions.
-- **Module handover documents:** implementation details, tests, contracts, and limitations.
-
-When a significant implementation milestone is completed, update the relevant roadmap and `PLAN.md` with the verified result.
-
-Do not mark a task complete based solely on an executor's intention or a proposed design.
-
-Do not rewrite historical decisions merely to make the current architecture appear cleaner. Preserve the distinction between what was originally planned, what was implemented, what was verified, and what was later changed.
-
----
-
-# END OF MASTER PROJECT ROADMAP
+This gives you a defined finish line rather than an LLM module that keeps expanding while the rest of the project remains untouched.

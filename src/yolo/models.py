@@ -221,6 +221,8 @@ class EvidenceRecord:
             raise ValueError("label must be a non-empty string")
         if self.creation_source not in ("detection_promoted", "manual"):
             raise ValueError(f"creation_source must be 'detection_promoted' or 'manual', got '{self.creation_source}'")
+        if self.creation_source == "detection_promoted" and not self.det_refs:
+            raise ValueError("detection_promoted evidence must have at least one det_ref")
         if not self.created_at:
             now_iso = datetime.now(timezone.utc).isoformat()
             self.created_at = now_iso
