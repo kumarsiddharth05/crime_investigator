@@ -64,6 +64,10 @@ reports/*
 *.sublime-workspace
 *.sublime-project
 
+# Module 2 YOLO weights and local data caches
+*.pt
+data/
+
 # OS artifacts
 .DS_Store
 Thumbs.db
